@@ -102,7 +102,7 @@ class GameRoom {
 
         if (action.type === 'ready') {
             player.ready = action.ready;
-            if (Array.from(this.players.values()).every(p => p.ready) && this.players.size >= 2) {
+            if (Array.from(this.players.values()).every(p => p.ready) && this.players.size >= 1) {
                 this.startBuildPhase();
             }
             this.broadcastRoomState();

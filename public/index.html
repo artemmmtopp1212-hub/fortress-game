@@ -332,7 +332,7 @@
                 </div>
             `).join('');
             document.getElementById('lobbyInfo').textContent =
-                `${gameState.players.length}/6 игроков | Нужно минимум 2 для старта`;
+                `${gameState.players.length}/6 игроков | Минимум 1 игрок для старта`;
             const me = gameState.players.find(p => p.id === myId);
             if (me) {
                 myId = me.id;
