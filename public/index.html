@@ -10,622 +10,1151 @@
             background: #1a1a2e;
             color: #fff;
             font-family: 'Segoe UI', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             overflow: hidden;
+            width: 100vw;
+            height: 100vh;
         }
-        #gameContainer {
-            position: relative;
-            width: 800px;
-            height: 600px;
-        }
-        #loginScreen, #lobbyScreen {
-            position: absolute;
-            width: 100%;
-            height: 100%;
+        .screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
-            border-radius: 10px;
-            padding: 20px;
+            z-index: 100;
         }
-        h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-            text-shadow: 0 0 20px #e94560;
-            color: #e94560;
-        }
-        h2 { margin-bottom: 20px; color: #aaa; }
+        .screen.hidden { display: none !important; }
+        #loginScreen { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
+        #charSelectScreen { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
+        #lobbyScreen { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
+        h1 { font-size: 48px; margin-bottom: 10px; text-shadow: 0 0 20px #e94560; color: #e94560; }
+        h2 { margin-bottom: 20px; color: #aaa; font-size: 20px; }
         input {
-            padding: 12px 24px;
-            font-size: 18px;
-            border: 2px solid #e94560;
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            width: 300px;
-            text-align: center;
+            padding: 12px 24px; font-size: 18px;
+            border: 2px solid #e94560; background: rgba(255,255,255,0.1);
+            color: #fff; border-radius: 8px; margin-bottom: 15px;
+            width: 300px; text-align: center;
         }
         button {
-            padding: 12px 32px;
-            font-size: 18px;
-            border: none;
-            background: #e94560;
-            color: #fff;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin: 5px;
+            padding: 12px 32px; font-size: 18px; border: none;
+            background: #e94560; color: #fff; border-radius: 8px;
+            cursor: pointer; transition: all 0.3s; margin: 5px;
         }
         button:hover { background: #ff6b6b; transform: scale(1.05); }
         button:disabled { background: #555; cursor: not-allowed; transform: none; }
-        canvas {
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+            max-width: 650px;
+        }
+        .role-card {
+            background: rgba(255,255,255,0.08);
+            border: 2px solid #555;
             border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            min-width: 180px;
+        }
+        .role-card:hover { border-color: #e94560; background: rgba(233,69,96,0.15); }
+        .role-card.selected { border-color: #e94560; background: rgba(233,69,96,0.25); box-shadow: 0 0 15px rgba(233,69,96,0.3); }
+        .role-card .icon { font-size: 36px; }
+        .role-card .name { font-size: 16px; font-weight: bold; margin: 5px 0; }
+        .role-card .desc { font-size: 11px; color: #aaa; }
+        .role-card .passive { font-size: 10px; color: #9b59b6; margin-top: 4px; }
+        .role-card .stats { font-size: 10px; color: #888; margin-top: 3px; }
+        #lobbyPlayers {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .lobby-player {
+            background: rgba(255,255,255,0.08);
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .lobby-player.ready { background: rgba(46,204,113,0.2); border: 1px solid #2ecc71; }
+        .lobby-player .role-icon { font-size: 24px; }
+        .lobby-player .p-name { font-size: 16px; font-weight: bold; }
+        .lobby-player .p-role { font-size: 12px; color: #aaa; }
+        canvas#gameCanvas {
             display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            cursor: crosshair;
         }
         #hud {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
+            position: fixed;
+            top: 10px; left: 10px; right: 10px;
             display: none;
             justify-content: space-between;
             pointer-events: none;
+            z-index: 10;
         }
         .hud-panel {
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.75);
             padding: 10px 15px;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 13px;
+            line-height: 1.5;
         }
-        .player-list {
-            position: absolute;
-            right: 10px;
-            top: 50px;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 8px;
+        .hp-bar {
+            width: 120px; height: 6px;
+            background: #333; border-radius: 3px; margin-top: 2px;
+        }
+        .hp-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+        .hp-fill.green { background: #2ecc71; }
+        .hp-fill.red { background: #e74c3c; }
+        .hp-fill.yellow { background: #f1c40f; }
+        .xp-bar { width: 120px; height: 4px; background: #333; border-radius: 2px; margin-top: 2px; }
+        .xp-fill { height: 100%; background: #9b59b6; border-radius: 2px; transition: width 0.3s; }
+        #playerList {
+            position: fixed;
+            right: 10px; top: 50px;
+            background: rgba(0,0,0,0.75);
+            padding: 10px; border-radius: 8px;
             font-size: 12px;
             display: none;
+            z-index: 10;
+            min-width: 160px;
         }
-        .player-item {
-            margin: 4px 0;
+        .plist-item {
+            margin: 3px 0;
             padding: 4px 8px;
             border-radius: 4px;
+            border-left: 3px solid #fff;
         }
-        .player-item.ready { background: rgba(0,255,0,0.2); }
-        .hp-bar {
-            width: 100%;
-            height: 6px;
-            background: #333;
-            border-radius: 3px;
-            margin-top: 2px;
-        }
-        .hp-fill {
-            height: 100%;
-            background: #e94560;
-            border-radius: 3px;
-            transition: width 0.3s;
-        }
+        .plist-item.dead { opacity: 0.4; }
         #buildToolbar {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
+            position: fixed;
+            bottom: 10px; left: 50%;
             transform: translateX(-50%);
             display: none;
-            gap: 10px;
+            gap: 6px;
+            z-index: 10;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90vw;
         }
         .build-btn {
-            padding: 8px 16px;
-            background: rgba(0,0,0,0.7);
+            padding: 6px 12px;
+            background: rgba(0,0,0,0.8);
             border: 2px solid #555;
             color: #fff;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
+            white-space: nowrap;
+            transition: all 0.15s;
         }
-        .build-btn:hover, .build-btn.active {
-            border-color: #e94560;
-            background: rgba(233,69,96,0.3);
+        .build-btn:hover, .build-btn.active { border-color: #e94560; background: rgba(233,69,96,0.3); }
+        .build-btn.green-btn { border-color: #2ecc71; background: rgba(46,204,113,0.3); }
+        .build-btn.green-btn:hover { background: rgba(46,204,113,0.5); }
+        .build-sep { color: #555; font-size: 12px; align-self: center; margin: 0 2px; }
+        #abilityBar {
+            position: fixed;
+            bottom: 10px; left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 8px;
+            z-index: 10;
+        }
+        .ability-btn {
+            width: 50px; height: 50px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #555;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            position: relative;
+            transition: all 0.15s;
+        }
+        .ability-btn:hover { border-color: #e94560; }
+        .ability-btn.on-cooldown { opacity: 0.5; }
+        .ability-btn .a-icon { font-size: 20px; }
+        .ability-btn .a-key { position: absolute; top: 2px; left: 4px; font-size: 9px; color: #aaa; }
+        .ability-btn .a-cd { position: absolute; bottom: 2px; font-size: 9px; color: #e74c3c; }
+        #chatPanel {
+            position: fixed;
+            bottom: 70px; left: 10px;
+            width: 300px;
+            z-index: 10;
+            display: none;
+        }
+        #chatMessages {
+            background: rgba(0,0,0,0.5);
+            border-radius: 8px 8px 0 0;
+            padding: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .chat-msg { margin: 2px 0; word-wrap: break-word; }
+        #chatInput {
+            width: 100%;
+            padding: 6px 10px;
+            font-size: 12px;
+            border: 1px solid #555;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            border-radius: 0 0 8px 8px;
+            outline: none;
+        }
+        #minimap {
+            position: fixed;
+            bottom: 70px; right: 10px;
+            border: 2px solid #555;
+            border-radius: 5px;
+            display: none;
+            z-index: 10;
         }
         #message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
+            position: fixed;
+            top: 35%; left: 50%;
             transform: translate(-50%, -50%);
             font-size: 36px;
             text-shadow: 0 0 20px #e94560;
             display: none;
             pointer-events: none;
-            animation: fadeInOut 2s;
+            z-index: 20;
+            animation: fadeInOut 2.5s;
+            text-align: center;
         }
         @keyframes fadeInOut {
             0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
             80% { opacity: 1; }
             100% { opacity: 0; }
         }
-        #endScreen {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0,0,0,0.9);
-            border-radius: 10px;
+        #endScreen { background: rgba(0,0,0,0.92); z-index: 200; }
+        #endScreen h1 { font-size: 56px; margin-bottom: 10px; }
+        #endScreen .score { font-size: 22px; margin: 10px; color: #aaa; }
+        .results-table {
+            margin: 15px 0;
+            border-collapse: collapse;
+            min-width: 400px;
         }
-        #endScreen h1 { font-size: 64px; }
-        #endScreen .score { font-size: 24px; margin: 20px; color: #aaa; }
-        .role-info {
-            font-size: 12px;
-            color: #aaa;
-            margin-top: 5px;
+        .results-table th, .results-table td {
+            padding: 8px 16px;
+            border-bottom: 1px solid #333;
+            text-align: left;
+            font-size: 14px;
         }
-        #minimap {
-            position: absolute;
-            bottom: 60px;
-            left: 10px;
-            border: 2px solid #555;
-            border-radius: 5px;
-            display: none;
-        }
-        .controls-info {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
+        .results-table th { color: #aaa; font-size: 12px; }
+        #controlsInfo {
+            position: fixed;
+            bottom: 10px; left: 10px;
             font-size: 11px;
-            color: #666;
+            color: #555;
             display: none;
+            z-index: 10;
         }
+        #buildTimer {
+            position: fixed;
+            top: 50px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            color: #f1c40f;
+            display: none;
+            z-index: 10;
+            text-shadow: 0 0 10px rgba(241,196,15,0.5);
+        }
+        #bossWarning {
+            position: fixed;
+            top: 30%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 42px;
+            color: #e74c3c;
+            display: none;
+            z-index: 25;
+            text-shadow: 0 0 30px #e74c3c;
+            animation: bossFlash 1s ease-in-out 3;
+            text-align: center;
+        }
+        @keyframes bossFlash {
+            0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.15); }
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <div id="loginScreen">
-            <h1>🏰 Крепость</h1>
-            <h2>Кооп игра на 6 человек</h2>
-            <input type="text" id="nameInput" placeholder="Твоё имя" maxlength="15">
-            <input type="text" id="roomInput" placeholder="Код комнаты" value="default">
-            <button onclick="joinGame()">Войти</button>
-        </div>
+    <div id="loginScreen" class="screen">
+        <h1>🏰 Крепость</h1>
+        <h2>Кооп игра на 6 человек</h2>
+        <input type="text" id="nameInput" placeholder="Твоё имя" maxlength="15">
+        <input type="text" id="roomInput" placeholder="Код комнаты" value="default">
+        <button onclick="showCharSelect()">Далее</button>
+    </div>
 
-        <div id="lobbyScreen" style="display:none">
-            <h2>Лобби</h2>
-            <div id="lobbyPlayers"></div>
-            <p id="lobbyInfo">Ждём игроков...</p>
-            <button id="readyBtn" onclick="toggleReady()">Готов</button>
-            <div id="roleInfo" class="role-info"></div>
-        </div>
+    <div id="charSelectScreen" class="screen hidden">
+        <h2>Выбери класс</h2>
+        <div class="role-grid" id="roleGrid"></div>
+        <button onclick="joinGame()">Войти в игру</button>
+    </div>
 
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="lobbyScreen" class="screen hidden">
+        <h2>Лобби</h2>
+        <div id="lobbyPlayers"></div>
+        <p id="lobbyInfo" style="margin:10px;color:#aaa;">Ждём игроков...</p>
+        <button id="readyBtn" onclick="toggleReady()">Готов</button>
+    </div>
 
-        <div id="hud">
-            <div class="hud-panel" id="leftHud"></div>
-            <div class="hud-panel" id="rightHud"></div>
-        </div>
+    <canvas id="gameCanvas"></canvas>
 
-        <div class="player-list" id="playerList"></div>
+    <div id="hud">
+        <div class="hud-panel" id="leftHud"></div>
+        <div class="hud-panel" id="rightHud"></div>
+    </div>
 
-        <div id="buildToolbar">
-            <button class="build-btn" onclick="selectTool('wall')">🧱 Стена (10💰)</button>
-            <button class="build-btn" onclick="selectTool('tower')">🗼 Башня (25💰)</button>
-            <button class="build-btn" onclick="selectTool('none')">✋ Курсор</button>
-            <button class="build-btn" onclick="endBuild()" style="background:rgba(0,150,0,0.5)">⚔️ Начать бой</button>
-        </div>
+    <div id="playerList"></div>
 
-        <div id="message"></div>
-        <canvas id="minimap" width="150" height="112"></canvas>
-        <div class="controls-info" id="controlsInfo">WASD - движение | ЛКМ - стрелять | E - лечить союзника</div>
+    <div id="buildToolbar"></div>
+    <div id="abilityBar"></div>
 
-        <div id="endScreen">
-            <h1 id="endTitle"></h1>
-            <div class="score" id="endScore"></div>
-            <button onclick="location.reload()">Заново</button>
-        </div>
+    <div id="chatPanel">
+        <div id="chatMessages"></div>
+        <input type="text" id="chatInput" placeholder="Написать..." maxlength="200">
+    </div>
+
+    <div id="buildTimer"></div>
+    <div id="message"></div>
+    <div id="bossWarning"></div>
+    <canvas id="minimap" width="150" height="112"></canvas>
+    <div id="controlsInfo">WASD - движение | ЛКМ - стрелять/ставить | 1-4 - способности | T - чат</div>
+
+    <div id="endScreen" class="screen hidden">
+        <h1 id="endTitle"></h1>
+        <div class="score" id="endScore"></div>
+        <table class="results-table" id="resultsTable"></table>
+        <button onclick="location.reload()">Заново</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const minimapCanvas = document.getElementById('minimap');
-        const minimapCtx = minimapCanvas.getContext('2d');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const mmCanvas = document.getElementById('minimap');
+    const mmCtx = mmCanvas.getContext('2d');
 
-        let ws, myId, gameState = null;
-        let selectedTool = 'none';
-        let keys = {};
-        let mouseX = 0, mouseY = 0;
+    const ROLES = {
+        BUILDER:  { name:'Строитель', icon:'🔨', color:'#f39c12', hp:120, ammo:30, coins:150, desc:'Строит стены, башни и ловушки.', passive:'Стены на 50% дешевле', abilities:['build_wall','build_tower','repair','build_trap'] },
+        ARCHER:   { name:'Стрелок',   icon:'🏹', color:'#e74c3c', hp:80,  ammo:80, coins:80,  desc:'Дальний бой, двойной урон.', passive:'Дальность x1.5', abilities:['double_shot','snipe','rain_arrows','poison_arrow'] },
+        ENGINEER: { name:'Инженер',   icon:'⚙️', color:'#3498db', hp:100, ammo:40, coins:120, desc:'Улучшает башни, ставит щиты.', passive:'Башни стреляют быстрее', abilities:['upgrade_turret','deploy_shield','repair_all','emp'] },
+        MEDIC:    { name:'Медик',     icon:'💊', color:'#2ecc71', hp:90,  ammo:50, coins:100, desc:'Лечит союзников, оживляет.', passive:'Лечение x1.5', abilities:['heal','heal_aoe','revive','shield'] },
+        MAGE:     { name:'Маг',       icon:'✨', color:'#9b59b6', hp:70,  ammo:60, coins:90,  desc:'Магические атаки, заморозка.', passive:'Крит 25%', abilities:['fireball','ice_wall','lightning','meteor'] },
+        SCOUT:    { name:'Разведчик', icon:'👁️', color:'#1abc9c', hp:75,  ammo:45, coins:110, desc:'Быстрый, видит ловушки.', passive:'Скорость x1.5', abilities:['speed_boost','trap_detect','mark_enemy','stealth'] }
+    };
 
-        const ROLE_COLORS = {
-            'Строитель': '#f39c12',
-            'Стрелок': '#e74c3c',
-            'Инженер': '#3498db',
-            'Медик': '#2ecc71',
-            'Маг': '#9b59b6',
-            'разведчик': '#1abc9c'
-        };
+    const WALL_TYPES = {
+        wood:  { name:'Дерево',    icon:'🪵', cost:10, hp:100 },
+        stone: { name:'Камень',    icon:'🧱', cost:20, hp:200 },
+        iron:  { name:'Железо',    icon:'⛓️', cost:35, hp:350 },
+        magic_wall: { name:'Магия', icon:'🌟', cost:50, hp:250 },
+        thorns:{ name:'Шипы',      icon:'🌵', cost:30, hp:80 }
+    };
 
-        const ROLE_ICONS = {
-            'Строитель': '🔨',
-            'Стрелок': '🏹',
-            'Инженер': '⚙️',
-            'Медик': '💊',
-            'Маг': '✨',
-            'Разведчик': '👁️'
-        };
+    const TOWER_TYPES = {
+        arrow:  { name:'Стрелы',   icon:'🏹', cost:25 },
+        magic:  { name:'Магия',    icon:'🔮', cost:40 },
+        frost:  { name:'Лёд',      icon:'❄️', cost:35 },
+        fire:   { name:'Огонь',    icon:'🔥', cost:50 },
+        sniper: { name:'Снайпер',  icon:'🎯', cost:60 },
+        healer: { name:'Лечение',  icon:'💚', cost:45 }
+    };
 
-        function joinGame() {
-            const name = document.getElementById('nameInput').value.trim();
-            const room = document.getElementById('roomInput').value.trim() || 'default';
-            if (!name) return alert('Введи имя!');
+    const TRAP_TYPES = {
+        spike:     { name:'Шипы',      icon:'📍', cost:15 },
+        slow:      { name:'Болото',    icon:'🟤', cost:20 },
+        explosive: { name:'Взрыв',     icon:'💣', cost:30 },
+        poison:    { name:'Яд',        icon:'🟢', cost:25 },
+        teleport:  { name:'Телепорт',  icon:'🌀', cost:40 }
+    };
 
-            document.getElementById('loginScreen').innerHTML = '<h2>Подключение...</h2>';
+    const ABILITY_INFO = {
+        build_wall:     { icon:'🧱', name:'Стена' },
+        build_tower:    { icon:'🗼', name:'Башня' },
+        repair:         { icon:'🔧', name:'Ремонт' },
+        build_trap:     { icon:'📍', name:'Ловушка' },
+        double_shot:    { icon:'🏹', name:'2 выстрела' },
+        snipe:          { icon:'🎯', name:'Снайпер' },
+        rain_arrows:    { icon:'🌧️', name:'Дождь' },
+        poison_arrow:   { icon:'🟢', name:'Яд' },
+        upgrade_turret: { icon:'⬆️', name:'Улучшить' },
+        deploy_shield:  { icon:'🛡️', name:'Щит' },
+        repair_all:     { icon:'🔧', name:'Починить всё' },
+        emp:            { icon:'⚡', name:'EMP' },
+        heal:           { icon:'💚', name:'Лечение' },
+        heal_aoe:       { icon:'💗', name:'Лечение AOE' },
+        revive:         { icon:' resurrection', name:'Воскрешение' },
+        shield:         { icon:'🛡️', name:'Щит' },
+        fireball:       { icon:'🔥', name:'Огнешар' },
+        ice_wall:       { icon:'🧊', name:'Лед.стена' },
+        lightning:      { icon:'⚡', name:'Молния' },
+        meteor:         { icon:'☄️', name:'Метеор' },
+        speed_boost:    { icon:'💨', name:'Скорость' },
+        trap_detect:    { icon:'👁️', name:'Детект' },
+        mark_enemy:     { icon:'🎯', name:'Метка' },
+        stealth:        { icon:'👻', name:'Стелс' }
+    };
 
-            ws = io();
+    const MOB_ICONS = {
+        'Гоблин':'👺','Орк':'👹','Скелет':'💀','Тролль':'🧌','Тёмный маг':'🧙',
+        'Виверна':'🐉','Демон':'😈','Дракон':'🐲','Лич':'☠️','Архидемон':'👿'
+    };
 
-            ws.on('connect', () => {
-                ws.emit('join', { name, room });
-            });
+    const MAP_W = 1200, MAP_H = 800;
 
-            ws.on('roomState', (msg) => {
-                gameState = msg;
-                myId = ws.id;
-                updateLobby();
-                updateHUD();
-                if (msg.phase === 'build' || msg.phase === 'defense') {
-                    document.getElementById('loginScreen').style.display = 'none';
-                    document.getElementById('lobbyScreen').style.display = 'none';
-                    document.getElementById('gameCanvas').style.display = 'block';
-                    document.getElementById('hud').style.display = 'flex';
-                    document.getElementById('playerList').style.display = 'block';
-                    document.getElementById('controlsInfo').style.display = 'block';
-                    if (msg.phase === 'build') document.getElementById('buildToolbar').style.display = 'flex';
-                    if (msg.phase === 'defense') document.getElementById('minimap').style.display = 'block';
-                    render();
-                }
-            });
+    let socket = null;
+    let myId = null;
+    let gs = null;
+    let selectedRole = null;
+    let selectedTool = 'none';
+    let buildSubType = 'wood';
+    let keys = {};
+    let mouseX = 0, mouseY = 0;
+    let particles = [];
+    let shotAnims = [];
+    let camera = { x: 0, y: 0 };
+    let gameRunning = false;
+    let moveInterval = null;
 
-            ws.on('phaseChange', (msg) => {
-                showMessage(msg.message);
-                if (msg.phase === 'defense') {
-                    document.getElementById('buildToolbar').style.display = 'none';
-                    document.getElementById('minimap').style.display = 'block';
-                }
-            });
+    function showCharSelect() {
+        const name = document.getElementById('nameInput').value.trim();
+        if (!name) return alert('Введи имя!');
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('charSelectScreen').classList.remove('hidden');
+        renderRoleGrid();
+    }
 
-            ws.on('playerMove', (msg) => {
-                if (gameState) {
-                    const p = gameState.players.find(p => p.id === msg.id);
-                    if (p) { p.x = msg.x; p.y = msg.y; }
-                }
-            });
+    function renderRoleGrid() {
+        const grid = document.getElementById('roleGrid');
+        grid.innerHTML = Object.entries(ROLES).map(([key, r]) => `
+            <div class="role-card" data-role="${key}" onclick="selectRole('${key}')">
+                <div class="icon">${r.icon}</div>
+                <div class="name" style="color:${r.color}">${r.name}</div>
+                <div class="desc">${r.desc}</div>
+                <div class="passive">⭐ ${r.passive}</div>
+                <div class="stats">❤️${r.hp} 🔫${r.ammo} 💰${r.coins}</div>
+            </div>
+        `).join('');
+    }
 
-            ws.on('shoot', (msg) => {
-                createBullet(msg.playerId, msg.tx, msg.ty);
-            });
+    function selectRole(key) {
+        selectedRole = key;
+        document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+        document.querySelector(`[data-role="${key}"]`).classList.add('selected');
+    }
 
-            ws.on('gameEnd', (msg) => {
-                document.getElementById('endScreen').style.display = 'flex';
-                document.getElementById('endTitle').textContent = msg.won ? '🏆 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
-                document.getElementById('endTitle').style.color = msg.won ? '#2ecc71' : '#e74c3c';
-                document.getElementById('endScore').textContent = `Счёт: ${msg.score}`;
-            });
+    function joinGame() {
+        const name = document.getElementById('nameInput').value.trim();
+        const room = document.getElementById('roomInput').value.trim() || 'default';
+        if (!name) return alert('Введи имя!');
+        if (!selectedRole) return alert('Выбери класс!');
 
-            ws.on('error_msg', (msg) => {
-                alert(msg);
-                location.reload();
-            });
+        document.getElementById('charSelectScreen').classList.add('hidden');
+        document.getElementById('lobbyScreen').classList.remove('hidden');
+        document.getElementById('lobbyInfo').textContent = 'Подключение...';
 
-            ws.on('connect_error', () => {
-                alert('Не удалось подключиться к серверу!');
-                location.reload();
-            });
-        }
+        socket = io();
 
-        function handleMessage(msg) {
-            switch(msg.type) {
-                case 'roomState':
-                    gameState = msg;
-                    updateLobby();
-                    updateHUD();
-                    if (msg.phase === 'build' || msg.phase === 'defense') {
-                        document.getElementById('lobbyScreen').style.display = 'none';
-                        document.getElementById('gameCanvas').style.display = 'block';
-                        document.getElementById('hud').style.display = 'flex';
-                        document.getElementById('playerList').style.display = 'block';
-                        if (msg.phase === 'build') {
-                            document.getElementById('buildToolbar').style.display = 'flex';
-                        }
-                        render();
-                    }
-                    break;
-                case 'phaseChange':
-                    showMessage(msg.message);
-                    if (msg.phase === 'defense') {
-                        document.getElementById('buildToolbar').style.display = 'none';
-                        document.getElementById('minimap').style.display = 'block';
-                        document.getElementById('controlsInfo').style.display = 'block';
-                    }
-                    break;
-                case 'playerMove':
-                    if (gameState) {
-                        const p = gameState.players.find(p => p.id === msg.id);
-                        if (p) { p.x = msg.x; p.y = msg.y; }
-                    }
-                    break;
-                case 'shoot':
-                    createBullet(msg.playerId, msg.tx, msg.ty);
-                    break;
-                case 'gameEnd':
-                    document.getElementById('endScreen').style.display = 'flex';
-                    document.getElementById('endTitle').textContent = msg.won ? '🏆 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
-                    document.getElementById('endTitle').style.color = msg.won ? '#2ecc71' : '#e74c3c';
-                    document.getElementById('endScore').textContent = `Счёт: ${msg.score}`;
-                    break;
-                case 'error':
-                    alert(msg.message);
-                    break;
+        socket.on('connect', () => {
+            myId = socket.id;
+            socket.emit('join', { name, room, characterClass: selectedRole });
+        });
+
+        socket.on('roomState', (state) => {
+            gs = state;
+            myId = socket.id;
+            updateLobby();
+            if (state.phase === 'build' || state.phase === 'defense') {
+                startGameView();
             }
-        }
+            updateHUD();
+            updateBuildToolbar();
+            updateAbilityBar();
+            updatePlayerList();
+        });
 
-        function updateLobby() {
-            if (!gameState) return;
-            const div = document.getElementById('lobbyPlayers');
-            div.innerHTML = gameState.players.map(p => `
-                <div class="player-item ${p.ready ? 'ready' : ''}">
-                    ${ROLE_ICONS[p.role] || '👤'} ${p.name} - ${p.role}
-                    ${p.ready ? '✅' : '⏳'}
-                </div>
-            `).join('');
-            document.getElementById('lobbyInfo').textContent =
-                `${gameState.players.length}/6 игроков | Минимум 1 игрок для старта`;
-            const me = gameState.players.find(p => p.id === myId);
-            if (me) {
-                myId = me.id;
-                document.getElementById('roleInfo').textContent = `Твоя роль: ${ROLE_ICONS[me.role]} ${me.role}`;
+        socket.on('phaseChange', (msg) => {
+            showMessage(msg.message || '');
+            if (msg.phase === 'defense') {
+                document.getElementById('buildToolbar').style.display = 'none';
+                document.getElementById('minimap').style.display = 'block';
+                document.getElementById('controlsInfo').style.display = 'block';
+                document.getElementById('buildTimer').style.display = 'none';
+                selectedTool = 'none';
             }
-        }
+            if (msg.phase === 'build') {
+                document.getElementById('buildToolbar').style.display = 'flex';
+                document.getElementById('minimap').style.display = 'block';
+                document.getElementById('buildTimer').style.display = 'block';
+                document.getElementById('abilityBar').style.display = 'none';
+            }
+        });
 
-        function toggleReady() {
-            const me = gameState?.players.find(p => p.name === document.getElementById('nameInput').value);
-            if (me) myId = me.id;
-            const ready = !gameState?.players.find(p => p.id === myId)?.ready;
-            ws.emit('action', { type: 'ready', ready });
-            document.getElementById('readyBtn').textContent = ready ? 'Не готов' : 'Готов';
-        }
+        socket.on('playerMove', (msg) => {
+            if (gs) {
+                const p = gs.players.find(p => p.id === msg.id);
+                if (p) { p.x = msg.x; p.y = msg.y; if (msg.direction) p.direction = msg.direction; }
+            }
+        });
 
-        function updateHUD() {
-            if (!gameState) return;
-            const me = gameState.players.find(p => p.id === myId);
-            if (!me) return;
+        socket.on('explosion', (msg) => {
+            for (let i = 0; i < 12; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 3;
+                particles.push({
+                    x: msg.x, y: msg.y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 30 + Math.random() * 20,
+                    maxLife: 50,
+                    color: msg.color || '#ff4500',
+                    size: 2 + Math.random() * 4
+                });
+            }
+        });
 
-            document.getElementById('leftHud').innerHTML = `
-                <div>${ROLE_ICONS[me.role]} ${me.name} | ${me.role}</div>
-                <div class="hp-bar"><div class="hp-fill" style="width:${me.hp/me.maxHp*100}%"></div></div>
-                <div>❤️ ${me.hp} | 💰 ${me.coins} | 🔫 ${me.ammo}</div>
-            `;
+        socket.on('towerShot', (msg) => {
+            shotAnims.push({
+                x1: 0, y1: 0,
+                x2: msg.targetX, y2: msg.targetY,
+                color: msg.color || '#fff',
+                life: 8,
+                towerId: msg.towerId
+            });
+        });
 
-            document.getElementById('rightHud').innerHTML = `
-                <div>⚔️ Волна: ${gameState.wave}/10</div>
-                <div>🏰 Крепость: ${gameState.fortressHP}</div>
-                <div>💀 Мобов: ${gameState.mobCount}</div>
-                <div>⭐ Счёт: ${gameState.score}</div>
-            `;
+        socket.on('bossSpawn', (msg) => {
+            const bw = document.getElementById('bossWarning');
+            bw.textContent = `${msg.icon} ${msg.name} ПОЯВИЛСЯ!`;
+            bw.style.display = 'block';
+            setTimeout(() => { bw.style.display = 'none'; }, 4000);
+        });
 
-            document.getElementById('playerList').innerHTML = gameState.players.map(p => `
-                <div class="player-item" style="border-left: 3px solid ${ROLE_COLORS[p.role] || '#fff'}">
-                    ${ROLE_ICONS[p.role]} ${p.name}
-                    <div class="hp-bar"><div class="hp-fill" style="width:${p.hp/p.maxHp*100}%"></div></div>
-                </div>
-            `).join('');
-        }
+        socket.on('fortressHit', (msg) => {
+            if (gs) {
+                gs.fortressHP = msg.hp;
+                gs.fortressMaxHP = msg.maxHp;
+            }
+            for (let i = 0; i < 8; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                particles.push({
+                    x: MAP_W/2, y: MAP_H/2,
+                    vx: Math.cos(angle) * (1 + Math.random() * 2),
+                    vy: Math.sin(angle) * (1 + Math.random() * 2),
+                    life: 20, maxLife: 20,
+                    color: '#e74c3c', size: 3
+                });
+            }
+        });
 
-        function selectTool(tool) {
-            selectedTool = tool;
-            document.querySelectorAll('.build-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-        }
+        socket.on('wallDestroyed', (msg) => {
+            for (let i = 0; i < 10; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                particles.push({
+                    x: msg.x, y: msg.y,
+                    vx: Math.cos(angle) * (1 + Math.random() * 3),
+                    vy: Math.sin(angle) * (1 + Math.random() * 3),
+                    life: 25, maxLife: 25,
+                    color: '#8B4513', size: 2 + Math.random() * 3
+                });
+            }
+        });
 
-        function endBuild() {
-            ws.emit('action', { type: 'endBuild' });
-        }
+        socket.on('trapTriggered', (msg) => {
+            for (let i = 0; i < 6; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                particles.push({
+                    x: msg.x, y: msg.y,
+                    vx: Math.cos(angle) * 2,
+                    vy: Math.sin(angle) * 2,
+                    life: 20, maxLife: 20,
+                    color: msg.type === 'explosive' ? '#FF4500' : '#9b59b6',
+                    size: 3
+                });
+            }
+        });
 
-        function showMessage(text) {
-            const el = document.getElementById('message');
-            el.textContent = text;
+        socket.on('buildTimer', (msg) => {
+            const el = document.getElementById('buildTimer');
             el.style.display = 'block';
-            setTimeout(() => el.style.display = 'none', 2000);
+            el.textContent = `🏗️ Стройте! ${msg.timeLeft}с`;
+            if (msg.timeLeft <= 10) el.style.color = '#e74c3c';
+            else el.style.color = '#f1c40f';
+        });
+
+        socket.on('chat', (msg) => {
+            const div = document.getElementById('chatMessages');
+            div.innerHTML += `<div class="chat-msg">${msg.text}</div>`;
+            div.scrollTop = div.scrollHeight;
+            if (div.children.length > 50) div.removeChild(div.firstChild);
+        });
+
+        socket.on('swapPosition', (msg) => {
+            if (gs) {
+                const p1 = gs.players.find(p => p.id === msg.p1.id);
+                const p2 = gs.players.find(p => p.id === msg.p2.id);
+                if (p1) { p1.x = msg.p1.x; p1.y = msg.p1.y; }
+                if (p2) { p2.x = msg.p2.x; p2.y = msg.p2.y; }
+            }
+        });
+
+        socket.on('gameEnd', (msg) => {
+            gameRunning = false;
+            if (moveInterval) clearInterval(moveInterval);
+            const el = document.getElementById('endScreen');
+            el.classList.remove('hidden');
+            document.getElementById('endTitle').textContent = msg.won ? '🏆 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
+            document.getElementById('endTitle').style.color = msg.won ? '#2ecc71' : '#e74c3c';
+            document.getElementById('endScore').textContent = `Счёт: ${msg.score} | Волна: ${msg.wave} | Убито: ${msg.totalKills}`;
+            if (msg.results && msg.results.length) {
+                let html = '<tr><th>#</th><th>Игрок</th><th>Класс</th><th>Убийства</th><th>Урон</th><th>Очки</th><th>Ур.</th></tr>';
+                msg.results.forEach((r, i) => {
+                    html += `<tr><td>${i+1}</td><td>${r.name}</td><td>${r.role}</td><td>${r.kills}</td><td>${r.damage}</td><td>${r.score}</td><td>${r.level}</td></tr>`;
+                });
+                document.getElementById('resultsTable').innerHTML = html;
+            }
+        });
+
+        socket.on('error_msg', (msg) => {
+            alert(msg);
+            location.reload();
+        });
+
+        socket.on('connect_error', () => {
+            alert('Не удалось подключиться!');
+            location.reload();
+        });
+
+        document.getElementById('chatInput').addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+                const val = document.getElementById('chatInput').value.trim();
+                if (val) { socket.emit('action', { type: 'chat', message: val }); document.getElementById('chatInput').value = ''; }
+            }
+        });
+    }
+
+    function startGameView() {
+        document.getElementById('lobbyScreen').classList.add('hidden');
+        document.getElementById('charSelectScreen').classList.add('hidden');
+        document.getElementById('loginScreen').classList.add('hidden');
+        canvas.style.display = 'block';
+        document.getElementById('hud').style.display = 'flex';
+        document.getElementById('playerList').style.display = 'block';
+        document.getElementById('chatPanel').style.display = 'block';
+        document.getElementById('controlsInfo').style.display = 'block';
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        if (!gameRunning) {
+            gameRunning = true;
+            startMoveLoop();
+            render();
         }
 
-        let bullets = [];
-        function createBullet(pid, tx, ty) {
-            const p = gameState?.players.find(p => p.id === pid);
-            if (p) bullets.push({ x: p.x, y: p.y, tx, ty, t: 0, color: ROLE_COLORS[p.role] || '#fff' });
+        if (gs && gs.phase === 'build') {
+            document.getElementById('buildToolbar').style.display = 'flex';
+            document.getElementById('minimap').style.display = 'block';
+            document.getElementById('buildTimer').style.display = 'block';
+        }
+        if (gs && gs.phase === 'defense') {
+            document.getElementById('minimap').style.display = 'block';
+            document.getElementById('abilityBar').style.display = 'flex';
+            document.getElementById('buildTimer').style.display = 'none';
+        }
+    }
+
+    function startMoveLoop() {
+        if (moveInterval) clearInterval(moveInterval);
+        moveInterval = setInterval(() => {
+            if (!gs || !gs.players.length) return;
+            const me = gs.players.find(p => p.id === myId);
+            if (!me || me.isDead) return;
+            if (gs.phase !== 'defense' && gs.phase !== 'build') return;
+            let dx = 0, dy = 0;
+            if (keys['w'] || keys['ц']) dy = -1;
+            if (keys['s'] || keys['ы']) dy = 1;
+            if (keys['a'] || keys['ф']) dx = -1;
+            if (keys['d'] || keys['в']) dx = 1;
+            if (dx !== 0 || dy !== 0) {
+                const lookingAt = { x: me.x + (mouseX - canvas.width/2), y: me.y + (mouseY - canvas.height/2) };
+                socket.emit('action', { type: 'move', dx, dy, lookingAt });
+            }
+        }, 50);
+    }
+
+    function updateLobby() {
+        if (!gs) return;
+        const div = document.getElementById('lobbyPlayers');
+        div.innerHTML = gs.players.map(p => {
+            const r = ROLES[p.roleKey] || {};
+            return `<div class="lobby-player ${p.ready ? 'ready' : ''}">
+                <span class="role-icon">${r.icon || '👤'}</span>
+                <div><div class="p-name">${p.name}</div><div class="p-role">${r.name || p.role}</div></div>
+                <span style="margin-left:auto">${p.ready ? '✅' : '⏳'}</span>
+            </div>`;
+        }).join('');
+        document.getElementById('lobbyInfo').textContent = `${gs.players.length}/6 игроков | Минимум 1 для старта`;
+    }
+
+    function toggleReady() {
+        const me = gs?.players.find(p => p.id === myId);
+        if (!me) return;
+        socket.emit('action', { type: 'ready', ready: !me.ready });
+        document.getElementById('readyBtn').textContent = me.ready ? 'Готов' : 'Не готов';
+    }
+
+    function updateHUD() {
+        if (!gs) return;
+        const me = gs.players.find(p => p.id === myId);
+        if (!me) return;
+        const r = ROLES[me.roleKey] || {};
+        const hpPct = Math.max(0, me.hp / me.maxHp * 100);
+        const xpPct = me.xpToNext > 0 ? Math.min(100, me.xp / me.xpToNext * 100) : 0;
+        const hpColor = hpPct > 60 ? 'green' : hpPct > 30 ? 'yellow' : 'red';
+        document.getElementById('leftHud').innerHTML = `
+            <div>${r.icon||'👤'} <b>${me.name}</b> | ${r.name||me.role} ур.${me.level}</div>
+            <div class="hp-bar"><div class="hp-fill ${hpColor}" style="width:${hpPct}%"></div></div>
+            <div class="xp-bar"><div class="xp-fill" style="width:${xpPct}%"></div></div>
+            <div>❤️ ${me.hp}/${me.maxHp} | 💰 ${me.coins} | 🔫 ${me.ammo}/${me.maxAmmo}${me.shield > 0 ? ' | 🛡️'+me.shield : ''}</div>
+        `;
+        document.getElementById('rightHud').innerHTML = `
+            <div>⚔️ Волна: ${gs.wave}/${gs.maxWaves}</div>
+            <div>🏰 Крепость: ${gs.fortressHP}/${gs.fortressMaxHP}</div>
+            <div>💀 Мобов: ${gs.mobCount} | Убито: ${gs.waveMobsKilled}/${gs.waveMobsTotal}</div>
+            <div>⭐ Счёт: ${gs.score}${gs.comboMultiplier > 1 ? ' | 🔥x'+gs.comboMultiplier.toFixed(1) : ''}</div>
+            <div>📊 Сложность: ${gs.difficulty.toFixed(1)}</div>
+        `;
+    }
+
+    function updatePlayerList() {
+        if (!gs) return;
+        document.getElementById('playerList').innerHTML = gs.players.map(p => {
+            const r = ROLES[p.roleKey] || {};
+            const hpPct = Math.max(0, p.hp / p.maxHp * 100);
+            return `<div class="plist-item ${p.isDead ? 'dead' : ''}" style="border-left-color:${r.color||'#fff'}">
+                ${r.icon||'👤'} ${p.name} ${p.isDead ? '💀' : ''} ур.${p.level}
+                <div class="hp-bar"><div class="hp-fill green" style="width:${hpPct}%"></div></div>
+            </div>`;
+        }).join('');
+    }
+
+    function updateBuildToolbar() {
+        if (!gs) return;
+        const me = gs.players.find(p => p.id === myId);
+        if (!me) return;
+        const tb = document.getElementById('buildToolbar');
+        let html = '';
+        html += '<span class="build-sep">Стены:</span>';
+        for (const [k, v] of Object.entries(WALL_TYPES)) {
+            const sel = selectedTool === 'wall' && buildSubType === k ? ' active' : '';
+            const disabled = me.coins < v.cost ? ' disabled' : '';
+            html += `<button class="build-btn${sel}" onclick="selectBuildTool('wall','${k}')"${disabled}>${v.icon} ${v.name} (${v.cost}💰)</button>`;
+        }
+        html += '<span class="build-sep">Башни:</span>';
+        for (const [k, v] of Object.entries(TOWER_TYPES)) {
+            const sel = selectedTool === 'tower' && buildSubType === k ? ' active' : '';
+            const disabled = me.coins < v.cost ? ' disabled' : '';
+            html += `<button class="build-btn${sel}" onclick="selectBuildTool('tower','${k}')"${disabled}>${v.icon} ${v.name} (${v.cost}💰)</button>`;
+        }
+        html += '<span class="build-sep">Ловушки:</span>';
+        for (const [k, v] of Object.entries(TRAP_TYPES)) {
+            const sel = selectedTool === 'trap' && buildSubType === k ? ' active' : '';
+            const disabled = me.coins < v.cost ? ' disabled' : '';
+            html += `<button class="build-btn${sel}" onclick="selectBuildTool('trap','${k}')"${disabled}>${v.icon} ${v.name} (${v.cost}💰)</button>`;
+        }
+        html += '<span class="build-sep">|</span>';
+        html += `<button class="build-btn${selectedTool === 'none' ? ' active' : ''}" onclick="selectBuildTool('none','')">✋ Курсор</button>`;
+        html += `<button class="build-btn" onclick="sendBuyAmmo()" ${me.coins < 10 || gs.phase !== 'defense' ? 'disabled' : ''}>🔫 +10 патрон (10💰)</button>`;
+        html += '<button class="build-btn green-btn" onclick="endBuild()">⚔️ Начать бой</button>';
+        tb.innerHTML = html;
+    }
+
+    function updateAbilityBar() {
+        if (!gs) return;
+        const me = gs.players.find(p => p.id === myId);
+        if (!me) return;
+        const bar = document.getElementById('abilityBar');
+        const abilities = ROLES[me.roleKey]?.abilities || [];
+        let html = '';
+        abilities.forEach((ab, i) => {
+            const info = ABILITY_INFO[ab] || { icon: '?', name: ab };
+            const cdLeft = Math.max(0, (me.abilityCooldowns?.[ab] || 0) - Date.now());
+            const onCd = cdLeft > 0;
+            html += `<div class="ability-btn ${onCd ? 'on-cooldown' : ''}" onclick="useAbility('${ab}')">
+                <span class="a-key">${i+1}</span>
+                <span class="a-icon">${info.icon}</span>
+                <span style="font-size:8px">${info.name}</span>
+                ${onCd ? `<span class="a-cd">${(cdLeft/1000).toFixed(0)}с</span>` : ''}
+            </div>`;
+        });
+        bar.innerHTML = html;
+    }
+
+    function selectBuildTool(tool, subType) {
+        selectedTool = tool;
+        buildSubType = subType;
+        updateBuildToolbar();
+    }
+
+    function endBuild() { socket.emit('action', { type: 'endBuild' }); }
+
+    function sendBuyAmmo() { socket.emit('action', { type: 'buyAmmo' }); }
+
+    function useAbility(name) {
+        socket.emit('action', { type: 'useAbility', ability: name, targetX: mouseX + camera.x, targetY: mouseY + camera.y });
+    }
+
+    function showMessage(text) {
+        const el = document.getElementById('message');
+        el.textContent = text;
+        el.style.display = 'block';
+        el.style.animation = 'none';
+        void el.offsetWidth;
+        el.style.animation = 'fadeInOut 2.5s';
+        setTimeout(() => { el.style.display = 'none'; }, 2500);
+    }
+
+    function render() {
+        if (!gameRunning) return;
+        requestAnimationFrame(render);
+        if (!gs || !gs.players.length) return;
+
+        const me = gs.players.find(p => p.id === myId);
+        if (me) {
+            camera.x = me.x - canvas.width / 2;
+            camera.y = me.y - canvas.height / 2;
         }
 
-        function render() {
-            if (!gameState || !gameState.players.length) {
-                requestAnimationFrame(render);
-                return;
-            }
-            ctx.fillStyle = '#2d5a27';
-            ctx.fillRect(0, 0, 800, 600);
+        ctx.fillStyle = '#2d5a27';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            for (let x = 0; x < 800; x += 40) {
-                for (let y = 0; y < 600; y += 40) {
-                    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-                    ctx.strokeRect(x, y, 40, 40);
-                }
-            }
+        ctx.save();
+        ctx.translate(-camera.x, -camera.y);
 
-            ctx.fillStyle = '#8B4513';
+        for (let x = 0; x < MAP_W; x += 40) {
+            for (let y = 0; y < MAP_H; y += 40) {
+                ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+                ctx.strokeRect(x, y, 40, 40);
+            }
+        }
+
+        ctx.fillStyle = 'rgba(139,69,19,0.3)';
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(MAP_W/2, MAP_H/2, 50, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🏰', MAP_W/2, MAP_H/2);
+
+        if (gs.fortressHP < gs.fortressMaxHP) {
+            const hpPct = gs.fortressHP / gs.fortressMaxHP;
+            ctx.fillStyle = '#333';
+            ctx.fillRect(MAP_W/2 - 30, MAP_H/2 + 35, 60, 6);
+            ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : hpPct > 0.25 ? '#f1c40f' : '#e74c3c';
+            ctx.fillRect(MAP_W/2 - 30, MAP_H/2 + 35, 60 * hpPct, 6);
+        }
+
+        for (const wall of gs.walls || []) {
+            const hpPct = wall.hp / wall.maxHp;
+            ctx.fillStyle = `rgba(139,69,19,${0.3 + hpPct * 0.7})`;
+            ctx.fillRect(wall.x - 15, wall.y - 15, 30, 30);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(wall.x - 15, wall.y - 15, 30, 30);
+            if (hpPct < 1) {
+                ctx.fillStyle = '#333';
+                ctx.fillRect(wall.x - 12, wall.y + 16, 24, 3);
+                ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : '#e74c3c';
+                ctx.fillRect(wall.x - 12, wall.y + 16, 24 * hpPct, 3);
+            }
+        }
+
+        for (const tower of gs.towers || []) {
+            ctx.fillStyle = tower.color || '#555';
             ctx.beginPath();
-            ctx.arc(400, 300, 40, 0, Math.PI * 2);
+            ctx.arc(tower.x, tower.y, tower.size / 2 || 12, 0, Math.PI * 2);
             ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
             ctx.fillStyle = '#fff';
             ctx.font = '16px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('🏰', 400, 306);
-
-            for (const wall of gameState.walls || []) {
-                const hpPercent = wall.hp / wall.maxHp;
-                ctx.fillStyle = `rgb(${Math.floor(139*(1-hpPercent)+100*hpPercent)}, ${Math.floor(69*(1-hpPercent)+100*hpPercent)}, ${Math.floor(19*hpPercent)})`;
-                ctx.fillRect(wall.x - 15, wall.y - 15, 30, 30);
-                ctx.strokeStyle = '#000';
-                ctx.strokeRect(wall.x - 15, wall.y - 15, 30, 30);
+            ctx.textBaseline = 'middle';
+            ctx.fillText(tower.icon || '🗼', tower.x, tower.y);
+            if (tower.level > 1) {
+                ctx.fillStyle = '#f1c40f';
+                ctx.font = '9px Arial';
+                ctx.fillText('⭐'.repeat(Math.min(tower.level-1, 5)), tower.x, tower.y + 16);
             }
+        }
 
-            for (const tower of gameState.towers || []) {
-                ctx.fillStyle = '#555';
-                ctx.fillRect(tower.x - 12, tower.y - 12, 24, 24);
-                ctx.fillStyle = '#e94560';
-                ctx.beginPath();
-                ctx.arc(tower.x, tower.y, 6, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            for (const p of gameState.players || []) {
-                const color = ROLE_COLORS[p.role] || '#fff';
-                ctx.fillStyle = color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#fff';
-                ctx.font = '16px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(ROLE_ICONS[p.role] || '👤', p.x, p.y + 5);
-                ctx.font = '10px Arial';
-                ctx.fillText(p.name, p.x, p.y - 20);
-
-                if (p.id === myId) {
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 2;
+        for (const trap of gs.traps || []) {
+            if (gs.phase === 'defense') {
+                const me2 = gs.players.find(p => p.id === myId);
+                if (me2 && me2.roleKey === 'SCOUT') {
+                    ctx.globalAlpha = 0.5;
+                    ctx.fillStyle = trap.color || '#808080';
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.lineWidth = 1;
+                    ctx.arc(trap.x, trap.y, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(trap.icon || '📍', trap.x, trap.y);
+                    ctx.globalAlpha = 1;
                 }
-            }
-
-            for (const mob of gameState.mobs || []) {
-                const hpPercent = mob.hp / mob.maxHp;
-                ctx.fillStyle = mob.name === 'Дракон' ? '#8B0000' : mob.name === 'Орк' ? '#556B2F' : '#8B4513';
+            } else if (gs.phase === 'build') {
+                ctx.globalAlpha = 0.4;
+                ctx.fillStyle = trap.color || '#808080';
                 ctx.beginPath();
-                ctx.arc(mob.x, mob.y, 12, 0, Math.PI * 2);
+                ctx.arc(trap.x, trap.y, 8, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = '#ff0000';
-                ctx.fillRect(mob.x - 12, mob.y - 20, 24 * hpPercent, 4);
-                ctx.fillStyle = '#fff';
-                ctx.font = '14px Arial';
-                ctx.fillText(mob.name === 'ДракON' ? '🐉' : mob.name === 'Орк' ? '👹' : '👺', mob.x, mob.y + 5);
-            }
-
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                const b = bullets[i];
-                b.t += 0.1;
-                const x = b.x + (b.tx - b.x) * b.t;
-                const y = b.y + (b.ty - b.y) * b.t;
-                ctx.fillStyle = b.color;
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fill();
-                if (b.t >= 1) bullets.splice(i, 1);
-            }
-
-            renderMinimap();
-            requestAnimationFrame(render);
-        }
-
-        function renderMinimap() {
-            minimapCtx.fillStyle = '#1a3a1a';
-            minimapCtx.fillRect(0, 0, 150, 112);
-            const sx = 150 / 800, sy = 112 / 600;
-
-            minimapCtx.fillStyle = '#8B4513';
-            minimapCtx.fillRect(400*sx-3, 300*sy-3, 6, 6);
-
-            for (const wall of gameState.walls || []) {
-                minimapCtx.fillStyle = '#aa8844';
-                minimapCtx.fillRect(wall.x*sx-1, wall.y*sy-1, 2, 2);
-            }
-
-            for (const p of gameState.players || []) {
-                minimapCtx.fillStyle = ROLE_COLORS[p.role] || '#fff';
-                minimapCtx.beginPath();
-                minimapCtx.arc(p.x*sx, p.y*sy, 3, 0, Math.PI*2);
-                minimapCtx.fill();
-            }
-
-            for (const mob of gameState.mobs || []) {
-                minimapCtx.fillStyle = '#ff0000';
-                minimapCtx.fillRect(mob.x*sx-1, mob.y*sy-1, 2, 2);
+                ctx.globalAlpha = 1;
             }
         }
 
-        document.addEventListener('keydown', (e) => {
-            keys[e.key.toLowerCase()] = true;
-            if (gameState?.phase === 'defense') {
-                let dx = 0, dy = 0;
-                if (keys['w']) dy = -5;
-                if (keys['s']) dy = 5;
-                if (keys['a']) dx = -5;
-                if (keys['d']) dx = 5;
-                if (dx || dy) {
-                    ws.emit('action', { type: 'move', dx, dy });
+        for (const mob of gs.mobs || []) {
+            const hpPct = mob.hp / mob.maxHp;
+            const r = mob.size / 2 || 10;
+            ctx.fillStyle = mob.color || '#8B4513';
+            ctx.beginPath();
+            ctx.arc(mob.x, mob.y, r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = mob.isBoss ? '#e74c3c' : '#000';
+            ctx.lineWidth = mob.isBoss ? 2 : 1;
+            ctx.stroke();
+            ctx.fillStyle = '#fff';
+            ctx.font = `${Math.max(12, r)}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(MOB_ICONS[mob.name] || '👺', mob.x, mob.y);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(mob.x - r, mob.y - r - 6, r * 2, 4);
+            ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : '#e74c3c';
+            ctx.fillRect(mob.x - r, mob.y - r - 6, r * 2 * hpPct, 4);
+            if (mob.isBoss) {
+                ctx.fillStyle = '#e74c3c';
+                ctx.font = '10px Arial';
+                ctx.fillText(mob.name, mob.x, mob.y - r - 12);
+            }
+            if (mob.statusEffects && mob.statusEffects.length) {
+                let sx = mob.x - 10;
+                for (const e of mob.statusEffects) {
+                    if (e === 'slow') { ctx.fillStyle = '#00CED1'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
+                    else if (e === 'stun') { ctx.fillStyle = '#f1c40f'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
+                    else if (e === 'poison') { ctx.fillStyle = '#00FF00'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
+                    else if (e === 'burn') { ctx.fillStyle = '#FF4500'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
+                    else if (e === 'marked') { ctx.fillStyle = '#ff00ff'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
                 }
             }
-        });
+        }
 
-        document.addEventListener('keyup', (e) => {
-            keys[e.key.toLowerCase()] = false;
-        });
+        for (const p of gs.players || []) {
+            const r = ROLES[p.roleKey] || {};
+            if (p.isDead) {
+                ctx.globalAlpha = 0.3;
+            }
+            ctx.fillStyle = r.color || '#fff';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            if (p.shield > 0) {
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            if (p.id === myId) {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.lineWidth = 1;
+            }
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(r.icon || '👤', p.x, p.y);
+            ctx.font = '10px Arial';
+            ctx.fillText(p.name, p.x, p.y - 22);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(p.x - 15, p.y + 18, 30, 4);
+            ctx.fillStyle = (p.hp / p.maxHp) > 0.5 ? '#2ecc71' : '#e74c3c';
+            ctx.fillRect(p.x - 15, p.y + 18, 30 * Math.max(0, p.hp / p.maxHp), 4);
+            ctx.globalAlpha = 1;
+        }
 
-        canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+        for (const s of shotAnims) {
+            ctx.strokeStyle = s.color;
+            ctx.globalAlpha = s.life / 8;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let sx = s.x1, sy = s.y1;
+            const tower = gs.towers?.find(t => t.id === s.towerId);
+            if (tower) { sx = tower.x; sy = tower.y; }
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(s.x2, s.y2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.lineWidth = 1;
+        }
 
-            if (gameState?.phase === 'build') {
-                if (selectedTool === 'wall') {
-                    ws.emit('action', { type: 'placeWall', x, y });
-                } else if (selectedTool === 'tower') {
-                    ws.emit('action', { type: 'placeTower', x, y });
+        for (const part of particles) {
+            ctx.globalAlpha = Math.max(0, part.life / part.maxLife);
+            ctx.fillStyle = part.color;
+            ctx.beginPath();
+            ctx.arc(part.x, part.y, part.size * (part.life / part.maxLife), 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.restore();
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].x += particles[i].vx;
+            particles[i].y += particles[i].vy;
+            particles[i].vx *= 0.95;
+            particles[i].vy *= 0.95;
+            particles[i].life--;
+            if (particles[i].life <= 0) particles.splice(i, 1);
+        }
+        for (let i = shotAnims.length - 1; i >= 0; i--) {
+            shotAnims[i].life--;
+            if (shotAnims[i].life <= 0) shotAnims.splice(i, 1);
+        }
+
+        renderMinimap();
+    }
+
+    function renderMinimap() {
+        mmCtx.fillStyle = '#1a3a1a';
+        mmCtx.fillRect(0, 0, 150, 112);
+        const sx = 150 / MAP_W, sy = 112 / MAP_H;
+
+        mmCtx.fillStyle = '#8B4513';
+        mmCtx.fillRect(MAP_W/2*sx-3, MAP_H/2*sy-3, 6, 6);
+
+        for (const wall of gs.walls || []) {
+            mmCtx.fillStyle = '#aa8844';
+            mmCtx.fillRect(wall.x*sx-1, wall.y*sy-1, 2, 2);
+        }
+        for (const tower of gs.towers || []) {
+            mmCtx.fillStyle = tower.color || '#e94560';
+            mmCtx.fillRect(tower.x*sx-2, tower.y*sy-2, 4, 4);
+        }
+        for (const p of gs.players || []) {
+            const r = ROLES[p.roleKey] || {};
+            mmCtx.fillStyle = p.isDead ? '#666' : (r.color || '#fff');
+            mmCtx.beginPath();
+            mmCtx.arc(p.x*sx, p.y*sy, 3, 0, Math.PI*2);
+            mmCtx.fill();
+        }
+        for (const mob of gs.mobs || []) {
+            mmCtx.fillStyle = mob.isBoss ? '#ff0000' : '#ff6666';
+            mmCtx.fillRect(mob.x*sx-1, mob.y*sy-1, mob.isBoss ? 4 : 2, mob.isBoss ? 4 : 2);
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
+        if (e.key === 't' || e.key === 'T' || e.key === 'е' || e.key === 'Е') {
+            const ci = document.getElementById('chatInput');
+            if (document.activeElement !== ci) {
+                e.preventDefault();
+                ci.focus();
+            }
+        }
+        if (gs && gs.phase === 'defense') {
+            const me = gs.players.find(p => p.id === myId);
+            if (me && !me.isDead) {
+                const abilities = ROLES[me.roleKey]?.abilities || [];
+                const num = parseInt(e.key);
+                if (num >= 1 && num <= abilities.length) {
+                    useAbility(abilities[num - 1]);
                 }
             }
+        }
+        if (e.key === 'Escape') {
+            document.getElementById('chatInput').blur();
+            selectedTool = 'none';
+            updateBuildToolbar();
+        }
+    });
 
-            if (gameState?.phase === 'defense') {
-                ws.emit('action', { type: 'shoot', targetX: x, targetY: y });
+    document.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+    });
+
+    canvas.addEventListener('click', (e) => {
+        if (!gs) return;
+        const rect = canvas.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        const worldX = cx + camera.x;
+        const worldY = cy + camera.y;
+
+        if (gs.phase === 'build') {
+            if (selectedTool === 'wall') {
+                socket.emit('action', { type: 'placeWall', x: worldX, y: worldY, wallType: buildSubType });
+            } else if (selectedTool === 'tower') {
+                socket.emit('action', { type: 'placeTower', x: worldX, y: worldY, towerType: buildSubType });
+            } else if (selectedTool === 'trap') {
+                socket.emit('action', { type: 'placeTrap', x: worldX, y: worldY, trapType: buildSubType });
             }
-        });
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'e' && gameState?.phase === 'defense') {
-                const me = gameState.players.find(p => p.id === myId);
-                if (!me || me.role !== 'Медик') return;
-                let closest = null, minDist = 50;
-                for (const p of gameState.players) {
-                    if (p.id === myId) continue;
-                    const dist = Math.hypot(p.x - me.x, p.y - me.y);
-                    if (dist < minDist) { minDist = dist; closest = p; }
-                }
-                if (closest) {
-                    ws.emit('action', { type: 'heal', targetId: closest.id });
-                }
+        if (gs.phase === 'defense') {
+            const me = gs.players.find(p => p.id === myId);
+            if (me && !me.isDead) {
+                socket.emit('action', { type: 'shoot', targetX: worldX, targetY: worldY });
             }
-        });
+        }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+    });
+
+    window.addEventListener('resize', () => {
+        if (canvas.style.display === 'block') {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+    });
     </script>
 </body>
 </html>
