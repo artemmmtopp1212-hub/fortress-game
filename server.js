@@ -5,11 +5,15 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, path: '/' });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (req, res) => res.send('OK'));
+
+wss.on('connection', (ws, req) => {
+    console.log('Новое подключение:', req.url);
+});
 
 const ROLES = ['Строитель', 'Стрелок', 'Инженер', 'Медик', 'Маг', 'Разведчик'];
 const WALL_HP = 100;

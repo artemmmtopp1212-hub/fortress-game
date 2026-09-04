@@ -265,8 +265,18 @@
             const room = document.getElementById('roomInput').value.trim() || 'default';
             if (!name) return alert('Введи имя!');
 
+            document.getElementById('loginScreen').innerHTML = '<h2>Подключение...</h2>';
+
             const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${location.host}`);
+            const url = `${protocol}//${location.host}`;
+
+            try {
+                ws = new WebSocket(url);
+            } catch(e) {
+                document.getElementById('loginScreen').innerHTML = '<h2>🏰 Крепость</h2><h2>Кооп игра на 6 человек</h2><input type="text" id="nameInput" placeholder="Твоё имя" maxlength="15"><input type="text" id="roomInput" placeholder="Код комнаты" value="default"><button onclick="joinGame()">Войти><div style="color:red;margin-top:10px">Ошибка: ' + e.message + '</div>';
+                return;
+            }
+
             ws.onopen = () => {
                 ws.send(JSON.stringify({ type: 'join', name, room }));
             };
@@ -276,9 +286,12 @@
             };
             ws.onerror = (e) => {
                 alert('Ошибка подключения к серверу!');
+                location.reload();
             };
             ws.onclose = () => {
-                document.getElementById('loginScreen').style.display = 'flex';
+                if (document.getElementById('lobbyScreen').style.display !== 'flex') {
+                    alert('Соединение разорвано');
+                }
             };
         }
 
