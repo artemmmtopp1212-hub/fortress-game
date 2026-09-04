@@ -265,13 +265,20 @@
             const room = document.getElementById('roomInput').value.trim() || 'default';
             if (!name) return alert('Введи имя!');
 
-            ws = new WebSocket(`wss://${location.host}`);
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}`);
             ws.onopen = () => {
                 ws.send(JSON.stringify({ type: 'join', name, room }));
             };
             ws.onmessage = (e) => {
                 const msg = JSON.parse(e.data);
                 handleMessage(msg);
+            };
+            ws.onerror = (e) => {
+                alert('Ошибка подключения к серверу!');
+            };
+            ws.onclose = () => {
+                document.getElementById('loginScreen').style.display = 'flex';
             };
         }
 
