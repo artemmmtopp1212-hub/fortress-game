@@ -1,0 +1,12 @@
+{
+  "name": "tower-defense",
+  "version": "1.0.0",
+  "description": "Многопользовательская игра «оборона базы» на 6 человек (2D, WebSocket ws)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.17.0"
+  }
+}

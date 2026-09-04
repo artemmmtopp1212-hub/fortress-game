@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оборона Базы — 2D</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#0b1420;color:#e8e8e8;font-family:'Segoe UI',Tahoma,sans-serif;overflow:hidden;user-select:none}
+        canvas#game{display:block;position:fixed;top:0;left:0;z-index:1}
+
+        /* --- Экраны --- */
+        .screen{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f1f2f,#122c3f);z-index:50;text-align:center;padding:20px}
+        .screen.hidden{display:none}
+        .screen h1{font-size:44px;color:#7fd3a8;margin-bottom:6px;text-shadow:0 0 18px rgba(127,211,168,.5)}
+        .screen h2{font-size:16px;color:#8aa;margin-bottom:28px;font-weight:400}
+        input[type=text],input[type=password]{padding:12px 16px;width:280px;font-size:16px;border-radius:8px;border:1px solid #2a4a5a;background:#0d1b28;color:#fff;margin:6px 0;outline:none}
+        input:focus{border-color:#7fd3a8}
+        .btn{padding:12px 28px;font-size:16px;border:none;border-radius:8px;background:#3a8f68;color:#fff;cursor:pointer;margin:10px 6px;transition:.15s}
+        .btn:hover{background:#4fae7e;transform:translateY(-1px)}
+        .btn:disabled{background:#3a4a4a;cursor:not-allowed;transform:none}
+        .btn.orange{background:#d07b39}.btn.orange:hover{background:#e08f4f}
+        .btn.red{background:#b0503c}.btn.red:hover{background:#c8614c}
+        #lobbyBox{background:rgba(0,0,0,.35);padding:26px 40px;border-radius:14px;border:1px solid #2a4a5a;min-width:360px}
+        #lobbyPlayers{text-align:left;margin:14px 0;min-height:60px}
+        .lp{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin:5px 0}
+        .lp.ready{border:1px solid #7fd3a8;background:rgba(127,211,168,.08)}
+        .lp .dot{width:10px;height:10px;border-radius:50%;background:#555}
+        .lp.ready .dot{background:#7fd3a8}
+        #codeBox{margin-top:14px;font-size:14px}
+        #joinErr{color:#ff9c8a;font-size:13px;min-height:18px;margin-top:10px}
+
+        /* --- Интерфейс в игре --- */
+        #ui{position:fixed;inset:0;pointer-events:none;z-index:10;display:none}
+        /* верхняя панель */
+        #topBar{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:22px;background:rgba(10,20,30,.85);padding:8px 22px;border-radius:10px;border:1px solid #2a4a5a;font-size:14px}
+        .titem{text-align:center}
+        .titem .tl{font-size:10px;color:#8aa;text-transform:uppercase;letter-spacing:1px}
+        .titem .tv{font-size:18px;font-weight:700}
+        #hpBar{width:100%;height:5px;background:#3a2a2a;border-radius:3px;margin-top:3px;overflow:hidden}
+        #hpFill{height:100%;background:#e05a4f;transition:width .2s;border-radius:3px}
+        #waveTimer{color:#f4c95d}
+        #buildTimerT{color:#7fd3a8;display:none}
+        /* левая панель игроков */
+        #sidePanel{position:absolute;left:8px;top:8px;background:rgba(10,20,30,.85);border-radius:10px;border:1px solid #2a4a5a;padding:10px 12px;width:190px;max-height:60vh;overflow-y:auto}
+        #sidePanel h3{font-size:12px;color:#8aa;margin-bottom:6px;letter-spacing:1px}
+        .playerRow{border-left:3px solid #555;padding:4px 6px;margin:4px 0;background:rgba(255,255,255,.03);border-radius:4px;font-size:12px}
+        .playerRow .nm{font-weight:600}
+        .playerRow .res{font-size:10px;color:#aab;display:flex;gap:6px;font-family:monospace}
+        .playerRow .mini{font-size:10px;color:#8aa}
+        /* панель игрока (себя) */
+        #meBox{position:absolute;left:8px;bottom:90px;background:rgba(10,20,30,.85);border-radius:10px;border:1px solid #2a4a5a;padding:10px 12px;width:190px;font-size:12px}
+        #meBox .mres{font-family:monospace;font-size:12px;line-height:1.8}
+        .miniUp{display:flex;justify-content:space-between;align-items:center;margin:2px 0}
+        .miniUp button{pointer-events:all;font-size:10px;padding:3px 8px;border:none;border-radius:5px;background:#3a8f68;color:#fff;cursor:pointer}
+        /* нижняя палитра строительства */
+        #buildBar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;background:rgba(10,20,30,.9);padding:10px 14px;border-radius:12px;border:1px solid #2a4a5a}
+        .bcard{pointer-events:all;width:110px;border-radius:8px;padding:8px;background:rgba(255,255,255,.05);border:1px solid #2a4a5a;cursor:pointer;text-align:center;transition:.12s}
+        .bcard:hover{border-color:#7fd3a8;background:rgba(127,211,168,.1)}
+        .bcard.selected{border-color:#f4c95d;background:rgba(244,201,93,.15);box-shadow:0 0 8px rgba(244,201,93,.4)}
+        .bcard.disabled{opacity:.4;cursor:not-allowed}
+        .bcard .ic{font-size:22px}
+        .bcard .nm{font-size:11px;font-weight:600;margin:2px 0}
+        .bcard .cs{font-size:10px;color:#aab;font-family:monospace}
+        .bcard .lv{font-size:9px;color:#8aa;margin-top:2px}
+        /* мини-карта */
+        #minimap{position:absolute;right:10px;bottom:10px;border:1px solid #2a4a5a;border-radius:6px;background:rgba(10,20,30,.7)}
+        /* чат */
+        #chat{position:absolute;left:8px;bottom:44px;width:260px}
+        #chatLog{background:rgba(10,20,30,.75);border-radius:8px 8px 0 0;padding:6px 10px;height:90px;overflow-y:auto;font-size:12px;border:1px solid #2a4a5a;border-bottom:none}
+        #chatInput{width:100%;pointer-events:all;padding:6px 10px;font-size:12px;border:none;border-radius:0 0 8px 8px;background:rgba(10,20,30,.9);color:#fff;outline:none;border:1px solid #2a4a5a}
+        /* подсказка тултипа */
+        #tooltip{position:absolute;background:rgba(10,15,25,.96);border:1px solid #2a4a5a;border-radius:8px;padding:8px 10px;font-size:12px;pointer-events:none;display:none;z-index:20;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+        #tooltip .tt-title{font-weight:700;margin-bottom:3px}
+        #tooltip .tt-sub{font-size:11px;color:#aab;line-height:1.5}
+        /* сообщения по центру */
+        #centerMsg{position:absolute;top:32%;left:50%;transform:translate(-50%,-50%);font-size:30px;font-weight:800;color:#fff;text-shadow:0 0 20px rgba(0,0,0,.8);display:none;text-align:center}
+        #controlsHint{position:absolute;right:10px;top:8px;background:rgba(10,20,30,.8);padding:8px 12px;border-radius:8px;font-size:11px;color:#aab;border:1px solid #2a4a5a;pointer-events:none}
+        #gameOver{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(5,8,12,.86);z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center}
+        #gameOver h1{font-size:40px;margin-bottom:16px}
+        #gameOver .score{font-size:18px;color:#aab;margin-bottom:18px}
+        #gameOver table{border-collapse:collapse;margin-bottom:20px}
+        #gameOver th,#gameOver td{padding:6px 18px;border-bottom:1px solid #2a4a5a;font-size:14px}
+        #gameOver th{color:#8aa}
+        ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#2a4a5a;border-radius:3px}
+    </style>
+</head>
+<body>
+
+    <!-- ЭКРАН ВХОДА -->
+    <div id="loginScreen" class="screen">
+        <h1>🏰 Оборона Базы</h1>
+        <h2>Кооп на 6 человек • Защищайте командный центр</h2>
+        <input type="text" id="nickname" placeholder="Твой никнейм" maxlength="15">
+        <input type="text" id="roomCode" placeholder="Код комнаты" maxlength="20">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+            <button class="btn" onclick="joinRoom()">Создать / Присоединиться</button>
+        </div>
+        <div id="joinErr"></div>
+        <div style="margin-top:14px;color:#6a8;font-size:12px">Создай комнату, отправь код друзьям (до 6 игроков). Как все готовы — нажми «Готов».</div>
+    </div>
+
+    <!-- ЛОББИ -->
+    <div id="lobbyScreen" class="screen hidden">
+        <h1>Лобби</h1>
+        <div id="lobbyBox">
+            <div id="codeBox">Комната: <b id="code"></b></div>
+            <div id="lobbyPlayers"></div>
+            <button class="btn orange" id="readyBtn" onclick="toggleReady()">✅ Готов</button>
+            <button class="btn" onclick="leave()">Назад</button>
+            <div style="font-size:12px;color:#8aa;margin-top:10px">Все отметили готовность — бой начнётся автоматически.</div>
+        </div>
+    </div>
+
+    <!-- ИГРОВОЙ ИНТЕРФЕЙС -->
+    <div id="ui">
+        <div id="topBar">
+            <div class="titem"><div class="tl">База</div><div class="tv" id="hpText">1000</div><div id="hpBar"><div id="hpFill"></div></div></div>
+            <div class="titem"><div class="tl">Волна</div><div class="tv" id="waveText">0</div></div>
+            <div class="titem"><div class="tl" id="timerLabel">Таймер</div><div class="tv" id="waveTimer">—</div></div>
+            <div class="titem"><div class="tl">Счёт</div><div class="tv" id="scoreText">0</div></div>
+        </div>
+
+        <div id="sidePanel"><h3>👥 Игроки</h3><div id="playerList"></div></div>
+
+        <div id="meBox">
+            <h3 style="font-size:11px;color:#8aa;margin-bottom:4px">🧑 Ресурсы и прокачка</h3>
+            <div class="mres" id="meRes"></div>
+            <div style="border-top:1px solid #2a4a5a;margin:6px 0"></div>
+            <div class="miniUp"><span>➕ Скорость</span><button data-s="speed">120 🍗</button></div>
+            <div class="miniUp"><span>⚔️ Урон</span><button data-s="damage">100 🍗</button></div>
+            <div class="miniUp"><span>❤️ Здоровье</span><button data-s="hp">100 🍗</button></div>
+        </div>
+
+        <div id="buildBar"></div>
+
+        <div id="minimapWrap"><canvas id="minimap" width="170" height="114"></canvas></div>
+
+        <div id="chat">
+            <div id="chatLog"></div>
+            <input type="text" id="chatInput" placeholder="Чат (T)...">
+        </div>
+
+        <div id="tooltip"></div>
+        <div id="centerMsg"></div>
+        <div id="controlsHint">WASD — движение<br>ЛКМ по мобу — атака<br>Клик по кнопке, потом по карте — стройка<br>Т — чат</div>
+    </div>
+
+    <!-- КОНЕЦ ИГРЫ -->
+    <div id="gameOver">
+        <h1 id="goTitle"></h1>
+        <div class="score" id="goScore"></div>
+        <table id="goTable"></table>
+        <button class="btn" onclick="location.reload()">Заново</button>
+    </div>
+
+    <canvas id="game"></canvas>
+
+<script>
+'use strict';
+// ==================== КЛИЕНТ ====================
+// Рендер на Canvas 2D четырёхугольниками/кругами (минималистичная графика).
+
+// ---------- Константы ----------
+const BUILD_DEFS = {
+    wall:       { name:'Стена', icon:'🧱', color:'#caa472', cost:'30 🪵', desc:'Танкует урон, блокирует проход' },
+    tower:      { name:'Башня', icon:'🗼', color:'#e07b39', cost:'40 🪵 · 60 🪨', desc:'Атакует мобов. 3 ур. — зенитка' },
+    generator:  { name:'Генератор', icon:'⚙️', color:'#7fdb6a', cost:'50 🪨 · 20 🍗', desc:'Добывает дерево/камень/еду' },
+    barracks:   { name:'Казармы', icon:'🏰', color:'#c86b8c', cost:'80 🪵 · 60 🍗', desc:'Нанимает юнитов-охранников' }
+};
+
+// ---------- Состояние клиента ----------
+let ws=null, myId=null, me=null, phase='waiting';
+let map={w:1200,h:800}, base={x:600,y:400,r:40,hp:1000,max:1000};
+let state={ players:{}, buildings:{}, mobs:{}, units:[], proj:[] };
+let wave=0, buildTimer=0, score=0, waveKilled=0, waveTotal=0;
+let selectedBuild=null;      // тип выбранной постройки
+let buildMode=false;         // режим стройки (ждём клик по карте)
+
+// ---------- Управление ----------
+let keys={};
+let padX=0, padY=0;
+let cam={x:0,y:0};  // левый верхний угол камеры (в пикс. карты)
+let zoom=0.8;       // масштаб
+let mouse={x:0,y:0,scx:0,scy:0,hover:null}; // scx/scy — мировые координаты мыши
+
+// ---------- Canvas ----------
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+let W=0,H=0;
+function resize(){ W=window.innerWidth; H=window.innerHeight; canvas.width=W; canvas.height=H; }
+window.addEventListener('resize',resize); resize();
+
+// ---------- Подключение ----------
+function joinRoom(){
+    const name=document.getElementById('nickname').value.trim()||'Игрок';
+    const room=(document.getElementById('roomCode').value.trim()||'default').toLowerCase();
+    const proto=location.protocol==='https:'?'wss://':'ws://';
+    ws=new WebSocket(proto+location.host);
+    ws.onopen=()=>{ ws.send(JSON.stringify({type:'join',room,name})); };
+    ws.onmessage=(e)=>{ handleMsg(JSON.parse(e.data)); };
+    ws.onclose=()=>{ if(phase!=='over') errFlash('Соединение потеряно. Перезагрузи страницу.'); };
+    ws.onerror=()=>{ errFlash('Ошибка подключения к серверу'); };
+}
+function errFlash(m){ const el=document.getElementById('joinErr'); el.textContent=m; setTimeout(()=>el.textContent='',4000); }
+
+function leave(){ if(ws) ws.close(); location.reload(); }
+
+// ---------- Обработка сообщений ----------
+function handleMsg(m){
+    switch(m.type){
+        case 'welcome': {
+            myId=m.id; map=m.map; base=m.base;
+            break;
+        }
+        case 'joined': {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('lobbyScreen').classList.remove('hidden');
+            document.getElementById('code').textContent=m.room;
+            break;
+        }
+        case 'roominfo': {
+            // показываем список в лобби
+            const box=document.getElementById('lobbyPlayers');
+            box.innerHTML=m.players.map(p=>{
+                const isMe=p.id===myId;
+                return '<div class="lp '+(p.ready?'ready':'')+'"><div class="dot"></div><div>'+p.name+(isMe?' (вы)':'')+(p.ready?' ✅ Готов':'')+'</div></div>';
+            }).join('');
+            break;
+        }
+        case 'ready': break;
+        case 'state': applyState(m); break;
+        case 'building': {
+            state.buildings[m.b.id]=m.b;
+            break;
+        }
+        case 'upgraded': {
+            if(state.buildings[m.b.id]) { state.buildings[m.b.id]=m.b; }
+            break;
+        }
+        case 'phase': {
+            phase=m.phase; wave=m.wave||wave; buildTimer=m.buildTime||0;
+            const timerEl=document.getElementById('waveTimer');
+            if(phase==='build'){ timerEl.style.display='inline'; document.getElementById('timerLabel').textContent='До волны'; document.getElementById('waveTimer').style.color='#7fd3a8'; }
+            if(phase==='combat'){ timerEl.style.display='inline'; document.getElementById('timerLabel').textContent='Стройка'; document.getElementById('waveTimer').style.color='#f4c95d'; buildTimer=0; }
+            showUI(true);
+            // выйти из режима стройки при бое
+            if(phase==='combat'){ buildMode=false; selectedBuild=null; }
+            break;
+        }
+        case 'buildTimer': {
+            if(phase==='build'){ buildTimer=m.time; document.getElementById('waveTimer').textContent=m.time+'с'; }
+            break;
+        }
+        case 'base': base.hp=m.hp; base.max=m.max; break;
+        case 'message': showMsg(m.msg); break;
+        case 'chat': {
+            const log=document.getElementById('chatLog');
+            log.innerHTML+='<div>'+m.text+'</div>';
+            log.scrollTop=log.scrollHeight;
+            if(log.children.length>40)log.removeChild(log.firstChild);
+            break;
+        }
+        case 'self': {
+            if(m.p && m.p.id===myId){ me=m.p; updateMeUI(); }
+            break;
+        }
+        case 'gameover': {
+            phase='over';
+            document.getElementById('ui').style.display='none';
+            const go=document.getElementById('gameOver');
+            go.style.display='flex';
+            document.getElementById('goTitle').textContent=m.won?'🏆 ПОБЕДА!':'💀 БАЗА ПАЛА';
+            document.getElementById('goTitle').style.color=m.won?'#7fd3a8':'#e05a4f';
+            document.getElementById('goScore').textContent='Волна: '+m.wave+' | Счёт: '+m.score;
+            (m.results||[]).forEach((r,i)=>{
+                // не выводим, ждём полного
+            });
+            let rows='<tr><th>#</th><th>Игрок</th><th>Убийств</th><th>Счёт</th><th>Ур.</th></tr>';
+            (m.results||[]).forEach((r,i)=>{ rows+='<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td>'+r.kills+'</td><td>'+r.score+'</td><td>'+r.level+'</td></tr>'; });
+            document.getElementById('goTable').innerHTML=rows;
+            break;
+        }
+        case 'error': errFlash(m.msg); break;
+        default: break;
+    }
+}
+
+function applyState(m){
+    // игроки (словарь)
+    const ps={};
+    if(m.self) ps[m.self.id]=m.self;
+    (m.players||[]).forEach(p=>ps[p.id]=p);
+    state.players=ps;
+    me=ps[myId]||(m.self&&m.self.id===myId?m.self:null);
+    state.buildings = objToMap(m.buildings);
+    state.mobs = objToMap(m.mobs);
+    state.units = m.units||[];
+    state.proj = m.proj||[];
+    wave=m.wave; buildTimer=m.buildTimer||0; score=m.score; waveKilled=m.waveKilled; waveTotal=m.waveTotal;
+    base.hp=m.hp; base.max=m.max;
+    // UI синхронизация
+    updateTopBar();
+    updateSidePanel();
+    updateMeUI();
+    updateBuildBar();
+}
+function objToMap(arr){ const out={}; (arr||[]).forEach(o=>out[o.id]=o); return out; }
+
+function showUI(on){ document.getElementById('ui').style.display=on?'block':'none'; }
+
+// ---------- Обновление UI ----------
+function updateTopBar(){
+    document.getElementById('hpText').textContent=Math.max(0,base.hp);
+    document.getElementById('hpFill').style.width=(base.hp/base.max*100)+'%';
+    document.getElementById('waveText').textContent=wave;
+    document.getElementById('scoreText').textContent=score;
+    const timer=document.getElementById('waveTimer');
+    if(phase==='build'){ timer.textContent=buildTimer+'с'; document.getElementById('timerLabel').textContent='До волны'; }
+    else if(phase==='combat'){ timer.textContent=(waveTotal-waveKilled)+' ост.'; document.getElementById('timerLabel').textContent='Враги'; }
+}
+
+function updateSidePanel(){
+    const box=document.getElementById('playerList');
+    let html='';
+    const colors=['#f4c95d','#7fd3a8','#6fc3e8','#e08b9e','#c9a0ff','#f0a06b'];
+    let i=0;
+    for(const id in state.players){
+        const p=state.players[id];
+        html+='<div class="playerRow" style="border-left-color:'+p.color||colors[i%6]+'">';
+        html+='<span class="nm" style="color:'+(colors[i%6])+'">'+(p.id===myId?'★ ':'')+p.name+'</span> <span class="mini">ул.'+p.kills+'</span>';
+        html+='<div class="res">🪵'+Math.floor(p.res.wood)+' 🪨'+Math.floor(p.res.stone)+' 🍗'+Math.floor(p.res.food)+'</div>';
+        html+='</div>'; i++;
+    }
+    box.innerHTML=html;
+}
+
+function updateMeUI(){
+    if(!me)return;
+    document.getElementById('meRes').innerHTML=
+        '🪵 '+Math.floor(me.res.wood)+'&nbsp;&nbsp;🪨 '+Math.floor(me.res.stone)+'&nbsp;&nbsp;🍗 '+Math.floor(me.res.food)+'<br>'+
+        '⚔️ '+me.damage+'&nbsp; ❤️ '+me.hp+'/'+me.maxHp+'&nbsp; 💨 '+Math.round(me.speed)+'<br>'+
+        'Построек: '+me.buildCount+'&nbsp; Ур: '+me.level;
+}
+
+function updateBuildBar(){
+    const bar=document.getElementById('buildBar');
+    let html='';
+    for(const t in BUILD_DEFS){
+        const d=BUILD_DEFS[t];
+        const can=me && me.res.wood>=(t==='wall'?30:0) && me.res.wood>=(t==='tower'?40:0) && me.res.stone>=(t==='tower'?60:0) && me.res.stone>=(t==='generator'?50:0) && me.res.food>=(t==='generator'?20:0) && me.res.wood>=(t==='barracks'?80:0) && me.res.food>=(t==='barracks'?60:0);
+        const sel=selectedBuild===t;
+        html+='<div class="bcard '+(sel?'selected':'')+' '+(can?'':'disabled')+'" data-t="'+t+'">';
+        html+='<div class="ic">'+d.icon+'</div>';
+        html+='<div class="nm">'+d.name+'</div>';
+        html+='<div class="cs">'+d.cost+'</div>';
+        html+='<div class="lv">'+d.desc+'</div>';
+        html+='</div>';
+    }
+    bar.innerHTML=html;
+    bar.querySelectorAll('.bcard').forEach(el=>{
+        el.onclick=(ev)=>{ ev.stopPropagation(); const t=el.dataset.t; if(selectedBuild===t){ selectedBuild=null; buildMode=false; } else { selectedBuild=t; buildMode=true; } updateBuildBar(); };
+    });
+}
+
+// ---------- Отображение сообщений ----------
+let msgTimer=null;
+function showMsg(text){
+    const el=document.getElementById('centerMsg');
+    el.textContent=text; el.style.display='block';
+    clearTimeout(msgTimer);
+    msgTimer=setTimeout(()=>el.style.display='none',2600);
+}
+
+// ---------- Управление игроком ----------
+function sendMove(){
+    if(!ws||!me)return;
+    if(keys['w']||keys['ц']) padY=-1; else if(keys['s']||keys['ы']) padY=1; else padY=0;
+    if(keys['a']||keys['ф']) padX=-1; else if(keys['d']||keys['в']) padX=1; else padX=0;
+    if(padX||padY){
+        ws.send(JSON.stringify({type:'move',dir:{x:padX,y:padY}}));
+    } else if(ws._moved){
+        ws.send(JSON.stringify({type:'move',dir:null}));
+    }
+    ws._moved = !!(padX||padY);
+}
+setInterval(sendMove,40); // ~25/с
+
+document.addEventListener('keydown',(e)=>{
+    keys[e.key.toLowerCase()]=true;
+    if(e.key==='t'||e.key==='T'||e.key==='е'||e.key==='Е'){
+        const ci=document.getElementById('chatInput');
+        if(document.activeElement!==ci){ e.preventDefault(); ci.focus(); }
+    }
+    if(e.key==='Escape'){ buildMode=false; selectedBuild=null; updateBuildBar(); }
+});
+document.addEventListener('keyup',(e)=>{ keys[e.key.toLowerCase()]=false; });
+
+// ---------- Мышь ----------
+canvas.addEventListener('mousemove',(e)=>{
+    mouse.x=e.clientX; mouse.y=e.clientY;
+    const rect=canvas.getBoundingClientRect();
+    mouse.scx=cam.x+(e.clientX-rect.left)/zoom;
+    mouse.scy=cam.y+(e.clientY-rect.top)/zoom;
+});
+
+canvas.addEventListener('click',(e)=>{
+    if(!ws||!me)return;
+    // режим стройки: клик по карте
+    if(buildMode && selectedBuild){
+        ws.send(JSON.stringify({type:'build',type:selectedBuild,x:mouse.scx,y:mouse.scy}));
+        buildMode=false; selectedBuild=null; updateBuildBar();
+        return;
+    }
+    // режим боя: атака по ближайшему мобу под курсором
+    if(phase==='combat'){
+        const m=closestMob(mouse.scx,mouse.scy,30);
+        if(m){ ws.send(JSON.stringify({type:'shoot',tx:m.x,ty:m.y})); }
+    }
+});
+
+function closestMob(x,y,r){
+    let best=null,bd=r;
+    for(const id in state.mobs){ const m=state.mobs[id]; const d=Math.hypot(m.x-x,m.y-y); if(d<bd){bd=d;best=m;} }
+    return best;
+}
+
+// ---------- Камера (следует за мной) ----------
+function updateCam(){
+    if(me){
+        const halfW=W/2/zoom, halfH=H/2/zoom;
+        cam.x=me.x-halfW; cam.y=me.y-halfH;
+        cam.x=Math.max(0,Math.min(map.w-W/zoom,cam.x));
+        cam.y=Math.max(0,Math.min(map.h-H/zoom,cam.y));
+    }
+}
+
+// ---------- Рендер ----------
+function draw(){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle='#101a24'; ctx.fillRect(0,0,W,H);
+
+    // мировые координаты
+    ctx.save();
+    ctx.scale(zoom,zoom);
+    ctx.translate(-cam.x,-cam.y);
+
+    // земля
+    ctx.fillStyle='#1d2f1f';
+    ctx.fillRect(0,0,map.w,map.h);
+    // сетка
+    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=1;
+    for(let x=0;x<=map.w;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,map.h);ctx.stroke();}
+    for(let y=0;y<=map.h;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(map.w,y);ctx.stroke();}
+    // границы
+    ctx.strokeStyle='#e05a4f'; ctx.lineWidth=4;
+    ctx.strokeRect(0,0,map.w,map.h);
+
+    // зона спавна вокруг базы (нельзя строить)
+    ctx.beginPath(); ctx.arc(base.x,base.y,100,0,7); ctx.fillStyle='rgba(255,0,0,.05)'; ctx.fill();
+
+    drawBuildings();
+    drawUnits();
+    drawMobs();
+    drawProjectiles();
+    drawBase();
+    drawPlayers();
+
+    // режим стройки — призрак
+    if(buildMode && selectedBuild){
+        const def=BUILD_DEFS[selectedBuild];
+        ctx.beginPath(); ctx.arc(mouse.scx,mouse.scy,18,0,7);
+        ctx.fillStyle='rgba(127,211,168,.35)'; ctx.fill();
+        ctx.strokeStyle='#7fd3a8'; ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // миникарта
+    drawMinimap();
+    // тултип
+    updateTooltip();
+}
+
+function drawBase(){
+    ctx.beginPath(); ctx.arc(base.x,base.y,base.r,0,7);
+    ctx.fillStyle='#4a6a8a'; ctx.fill();
+    ctx.strokeStyle='#6fa0c8'; ctx.lineWidth=4; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='bold 22px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🏰',base.x,base.y);
+}
+
+function drawBuildings(){
+    for(const id in state.buildings){
+        const b=state.buildings[id];
+        const d=BUILD_DEFS[b.type]||{color:'#999'};
+        const col=b.color||d.color;
+        // недостроена — полупрозрачная + прогресс
+        const ready=b.ready!==false;
+        ctx.globalAlpha=ready?1:0.5;
+        ctx.beginPath(); ctx.arc(b.x,b.y,(b.size||36)/2,0,7);
+        ctx.fillStyle=col; ctx.fill();
+        ctx.strokeStyle=ready?'#fff':'#888'; ctx.lineWidth=2; ctx.stroke();
+        ctx.fillStyle='#fff'; ctx.font='bold 16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(d.icon,b.x,b.y);
+        // полоска здоровья
+        if(b.hp<b.maxHp){
+            const w=30,h=4;
+            ctx.fillStyle='#3a2a2a'; ctx.fillRect(b.x-w/2,b.y-(b.size/2)-12,w,h);
+            ctx.fillStyle=ready?'#e05a4f':'#f4c95d'; ctx.fillRect(b.x-w/2,b.y-(b.size/2)-12,w*(b.hp/b.maxHp),h);
+        }
+        // уровень
+        if(ready && b.level>1){
+            ctx.globalAlpha=1;
+            ctx.fillStyle='#f4c95d'; ctx.font='bold 10px sans-serif'; ctx.fillText('Lv '+b.level,b.x,b.y-(b.size/2)-16);
+        }
+        ctx.globalAlpha=1;
+    }
+}
+
+function drawUnits(){
+    for(const u of state.units){
+        ctx.beginPath(); ctx.arc(u.x,u.y,u.r,0,7);
+        ctx.fillStyle='#f5f5dc'; ctx.fill();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    }
+}
+
+function drawMobs(){
+    for(const id in state.mobs){
+        const m=state.mobs[id];
+        // только видимые (около камеры) — оптимизация
+        if(m.x<cam.x-60||m.x>cam.x+W/zoom+60||m.y<cam.y-60||m.y>cam.y+H/zoom+60)continue;
+        ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,7);
+        ctx.fillStyle=m.color||'#d9534f'; ctx.fill();
+        ctx.lineWidth=2;
+        if(m.fly){ ctx.strokeStyle='#fff'; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle='#fff'; ctx.font='12px sans-serif'; ctx.fillText('🪽',m.x,m.y); }
+        else { ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.stroke(); }
+        // HP
+        if(m.hp<m.maxHp){
+            const w=m.r*2,h=3;
+            ctx.fillStyle='#3a2a2a'; ctx.fillRect(m.x-w/2,m.y-m.r-9,w,h);
+            ctx.fillStyle='#e05a4f'; ctx.fillRect(m.x-w/2,m.y-m.r-9,w*(m.hp/m.maxHp),h);
+        }
+    }
+}
+
+function drawProjectiles(){
+    ctx.fillStyle='#ffe08a';
+    for(const p of state.proj){
+        ctx.beginPath(); ctx.arc(p.px,p.py,3,0,7); ctx.fill();
+    }
+}
+
+function drawPlayers(){
+    const colors=['#f4c95d','#7fd3a8','#6fc3e8','#e08b9e','#c9a0ff','#f0a06b'];
+    let i=0;
+    for(const id in state.players){
+        const p=state.players[id];
+        const col=p.color||colors[i%6];
+        ctx.beginPath(); ctx.arc(p.x,p.y,12,0,7);
+        ctx.fillStyle=col; ctx.fill();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+        if(p.id===myId){
+            ctx.strokeStyle='#fff'; ctx.setLineDash([4,3]); ctx.beginPath(); ctx.arc(p.x,p.y,18,0,7); ctx.stroke(); ctx.setLineDash([]);
+        }
+        ctx.fillStyle='#fff'; ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText(p.name,p.x,p.y-16);
+        i++;
+    }
+}
+
+function drawMinimap(){
+    const mc=document.getElementById('minimap');
+    const mctx=mc.getContext('2d');
+    const mw=mc.width,mh=mc.height;
+    const sx=mw/map.w,sy=mh/map.h;
+    mctx.fillStyle='#12202c'; mctx.fillRect(0,0,mw,mh);
+    // база
+    mctx.fillStyle='#4a6a8a'; mctx.beginPath(); mctx.arc(base.x*sx,base.y*sy,3,0,7); mctx.fill();
+    // постройки
+    for(const id in state.buildings){ const b=state.buildings[id]; mctx.fillStyle=b.color||'#999'; mctx.fillRect(b.x*sx-1,b.y*sy-1,2,2); }
+    // мобы
+    mctx.fillStyle='#e05a4f';
+    for(const id in state.mobs){ const m=state.mobs[id]; mctx.fillRect(m.x*sx-1,m.y*sy-1,2,2); }
+    // игроки
+    mctx.fillStyle='#7fd3a8';
+    for(const id in state.players){ const p=state.players[id]; mctx.fillRect(p.x*sx-1,p.y*sy-1,2,2); }
+}
+
+function updateTooltip(){
+    const tip=document.getElementById('tooltip');
+    // ищем постройку под мышью
+    let hit=null;
+    for(const id in state.buildings){
+        const b=state.buildings[id];
+        if(Math.hypot(b.x-mouse.scx,b.y-mouse.scy)<(b.size||36)/2+4){ hit=b; break; }
+    }
+    if(!hit){ tip.style.display='none'; return; }
+    const d=BUILD_DEFS[hit.type]||{name:hit.type};
+    tip.style.display='block';
+    tip.style.left=(mouse.x+12)+'px';
+    tip.style.top=(mouse.y-10)+'px';
+    if(hit.top){ /* нет */ }
+    tip.innerHTML=
+        '<div class="tt-title">'+d.icon+' '+d.name+'</div>'+
+        '<div class="tt-sub">Прочность: '+Math.round(hit.hp)+'/'+hit.maxHp+'</div>'+
+        '<div class="tt-sub">Уровень: '+hit.level+(hit.ready===false?' (стройка '+(hit.buildTime?hit.buildLeft.toFixed(1):'')+'с)':'')+'</div>'+
+        (hit.type==='tower'?'<div class="tt-sub">Урон: '+hit.damage+' • Дальность: '+hit.range+'</div>':'')+
+        (hit.ready!==false && hit.type!=='wall'?'<div class="tt-sub" style="color:#7fd3a8">'+d.desc+'</div>':'')+
+        (me && (hit.owner===me.id || true)?'<div class="tt-sub" style="color:#f4c95d">ПКМ-С/клик, затем «улучшить»</div>':'');
+}
+
+// ---------- Улучшения игрока (кнопки в meBox) ----------
+document.getElementById('meBox').addEventListener('click',(e)=>{
+    const btn=e.target.closest('button[data-s]');
+    if(btn && ws){ ws.send(JSON.stringify({type:'upgradePlayer',stat:btn.dataset.s})); }
+});
+
+// ---------- Чат ----------
+document.getElementById('chatInput').addEventListener('keydown',(e)=>{
+    if(e.key==='Enter'&&ws){
+        const v=e.target.value.trim();
+        if(v){ ws.send(JSON.stringify({type:'chat',text:v})); e.target.value=''; }
+    }
+});
+
+// ---------- Цикл рендера ----------
+function loop(){
+    updateCam();
+    draw();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
