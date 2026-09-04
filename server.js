@@ -1,19 +1,14 @@
 const express = require('express');
-const { WebSocketServer } = require('ws');
 const http = require('http');
+const { Server } = require('socket.io');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: '/' });
+const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.get('/health', (req, res) => res.send('OK'));
-
-wss.on('connection', (ws, req) => {
-    console.log('Новое подключение:', req.url);
-});
 
 const ROLES = ['Строитель', 'Стрелок', 'Инженер', 'Медик', 'Маг', 'Разведчик'];
 const WALL_HP = 100;
@@ -40,14 +35,14 @@ class GameRoom {
         this.fortressHP = 500;
     }
 
-    addPlayer(ws, name) {
+    addPlayer(socket, name) {
         if (this.players.size >= 6) {
-            ws.send(JSON.stringify({ type: 'error', message: 'Комната полна' }));
+            socket.emit('error_msg', 'Комната полна');
             return false;
         }
         const roleIndex = this.players.size;
         const player = {
-            id: Date.now().toString(),
+            id: socket.id,
             name,
             role: ROLES[roleIndex],
             x: 400 + (roleIndex % 3) * 100,
@@ -56,34 +51,25 @@ class GameRoom {
             maxHp: 100,
             ammo: 50,
             coins: 100,
-            ready: false,
-            ws
+            ready: false
         };
-        this.players.set(player.id, player);
+        this.players.set(socket.id, player);
         this.broadcastRoomState();
         return true;
     }
 
     removePlayer(playerId) {
         this.players.delete(playerId);
-        if (this.players.size === 0) {
-            this.stopGame();
-        }
+        if (this.players.size === 0) this.stopGame();
         this.broadcastRoomState();
     }
 
-    broadcast(data, excludeId) {
-        const msg = JSON.stringify(data);
-        for (const [id, player] of this.players) {
-            if (id !== excludeId && player.ws.readyState === 1) {
-                player.ws.send(msg);
-            }
-        }
+    broadcast(data) {
+        io.to(this.id).emit('roomState', data);
     }
 
     broadcastRoomState() {
-        const state = {
-            type: 'roomState',
+        this.broadcast({
             phase: this.phase,
             players: Array.from(this.players.values()).map(p => ({
                 id: p.id, name: p.name, role: p.role,
@@ -96,8 +82,7 @@ class GameRoom {
             score: this.score,
             fortressHP: this.fortressHP,
             mobCount: this.mobs.length
-        };
-        this.broadcast(state);
+        });
     }
 
     handleAction(playerId, action) {
@@ -132,12 +117,12 @@ class GameRoom {
             if (action.type === 'move') {
                 player.x = Math.max(20, Math.min(780, player.x + action.dx));
                 player.y = Math.max(20, Math.min(580, player.y + action.dy));
-                this.broadcast({ type: 'playerMove', id: playerId, x: player.x, y: player.y });
+                io.to(this.id).emit('playerMove', { id: playerId, x: player.x, y: player.y });
             }
             if (action.type === 'shoot') {
                 this.handleShoot(player, action.targetX, action.targetY);
             }
-            if (action.type === 'heal' && player.ammo >= 5) {
+            if (action.type === 'heal' && player.role === 'Медик' && player.ammo >= 5) {
                 const target = this.players.get(action.targetId);
                 if (target) {
                     target.hp = Math.min(target.maxHp, target.hp + 30);
@@ -169,7 +154,7 @@ class GameRoom {
             }
         }
 
-        this.broadcast({ type: 'shoot', playerId: player.id, tx, ty });
+        io.to(this.id).emit('shoot', { playerId: player.id, tx, ty });
         this.broadcastRoomState();
     }
 
@@ -180,12 +165,8 @@ class GameRoom {
             player.ready = false;
         }
         this.broadcastRoomState();
-
-        this.broadcast({ type: 'phaseChange', phase: 'build', message: 'Стройте крепость! 60 секунд.' });
-
-        this.waveTimer = setTimeout(() => {
-            this.startDefensePhase();
-        }, 60000);
+        io.to(this.id).emit('phaseChange', { phase: 'build', message: 'Стройте крепость! 60 секунд.' });
+        this.waveTimer = setTimeout(() => this.startDefensePhase(), 60000);
     }
 
     startDefensePhase() {
@@ -193,7 +174,7 @@ class GameRoom {
         this.phase = 'defense';
         this.wave = 1;
         this.spawnWave();
-        this.broadcast({ type: 'phaseChange', phase: 'defense', message: 'Волна 1! Защищайте крепость!' });
+        io.to(this.id).emit('phaseChange', { phase: 'defense', message: 'Волна 1! Защищайте крепость!' });
         this.startGameLoop();
     }
 
@@ -209,14 +190,7 @@ class GameRoom {
                 case 2: x = Math.random() * 800; y = 620; break;
                 case 3: x = -20; y = Math.random() * 600; break;
             }
-            this.mobs.push({
-                x, y,
-                hp: type.hp,
-                maxHp: type.hp,
-                speed: type.speed,
-                damage: type.damage,
-                name: type.name
-            });
+            this.mobs.push({ x, y, hp: type.hp, maxHp: type.hp, speed: type.speed, damage: type.damage, name: type.name });
         }
     }
 
@@ -224,23 +198,17 @@ class GameRoom {
         this.gameLoop = setInterval(() => {
             this.updateMobs();
             this.broadcastRoomState();
-
             if (this.mobs.length === 0) {
                 this.wave++;
                 if (this.wave > 10) {
                     this.endGame(true);
                 } else {
                     this.spawnWave();
-                    this.broadcast({ type: 'phaseChange', phase: 'defense', message: `Волна ${this.wave}!` });
-                    for (const [, player] of this.players) {
-                        player.ammo += 20;
-                    }
+                    io.to(this.id).emit('phaseChange', { phase: 'defense', message: `Волна ${this.wave}!` });
+                    for (const [, player] of this.players) player.ammo += 20;
                 }
             }
-
-            if (this.fortressHP <= 0) {
-                this.endGame(false);
-            }
+            if (this.fortressHP <= 0) this.endGame(false);
         }, 500);
     }
 
@@ -258,15 +226,11 @@ class GameRoom {
                     wall.hp -= mob.damage;
                     if (wall.hp <= 0) this.walls.splice(j, 1);
                     mob.hp -= 5;
-                    if (mob.hp <= 0) {
-                        this.mobs.splice(i, 1);
-                        this.score += 5;
-                        break;
-                    }
+                    if (mob.hp <= 0) { this.mobs.splice(i, 1); this.score += 5; break; }
                 }
             }
 
-            if (Math.hypot(mob.x - centerX, mob.y - centerY) < 40) {
+            if (this.mobs[i] && Math.hypot(mob.x - centerX, mob.y - centerY) < 40) {
                 this.fortressHP -= mob.damage;
                 this.mobs.splice(i, 1);
             }
@@ -277,10 +241,7 @@ class GameRoom {
                 const mob = this.mobs[i];
                 if (Math.hypot(mob.x - tower.x, mob.y - tower.y) < tower.range) {
                     mob.hp -= tower.damage;
-                    if (mob.hp <= 0) {
-                        this.mobs.splice(i, 1);
-                        this.score += 5;
-                    }
+                    if (mob.hp <= 0) { this.mobs.splice(i, 1); this.score += 5; }
                 }
             }
         }
@@ -289,10 +250,8 @@ class GameRoom {
     endGame(won) {
         clearInterval(this.gameLoop);
         this.phase = 'ended';
-        this.broadcast({
-            type: 'gameEnd',
-            won,
-            score: this.score,
+        io.to(this.id).emit('gameEnd', {
+            won, score: this.score,
             message: won ? `Победа! Счёт: ${this.score}` : `Поражение! Счёт: ${this.score}`
         });
     }
@@ -304,38 +263,28 @@ class GameRoom {
     }
 }
 
-wss.on('connection', (ws) => {
+io.on('connection', (socket) => {
+    console.log('Подключён:', socket.id);
     let currentRoom = null;
-    let playerId = null;
 
-    ws.on('message', (data) => {
-        try {
-            const msg = JSON.parse(data);
-
-            if (msg.type === 'join') {
-                const roomId = msg.room || 'default';
-                if (!rooms.has(roomId)) rooms.set(roomId, new GameRoom(roomId));
-                const room = rooms.get(roomId);
-                if (room.addPlayer(ws, msg.name)) {
-                    currentRoom = room;
-                    playerId = Array.from(room.players.keys()).pop();
-                }
-            }
-
-            if (msg.type === 'action' && currentRoom) {
-                currentRoom.handleAction(playerId, msg.action);
-            }
-        } catch (e) {}
+    socket.on('join', (data) => {
+        const roomId = data.room || 'default';
+        socket.join(roomId);
+        if (!rooms.has(roomId)) rooms.set(roomId, new GameRoom(roomId));
+        const room = rooms.get(roomId);
+        if (room.addPlayer(socket, data.name)) {
+            currentRoom = room;
+        }
     });
 
-    ws.on('close', () => {
-        if (currentRoom && playerId) {
-            currentRoom.removePlayer(playerId);
-        }
+    socket.on('action', (action) => {
+        if (currentRoom) currentRoom.handleAction(socket.id, action);
+    });
+
+    socket.on('disconnect', () => {
+        if (currentRoom) currentRoom.removePlayer(socket.id);
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Сервер запущен на порту ${PORT}`));

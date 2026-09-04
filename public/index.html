@@ -231,6 +231,7 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -267,32 +268,65 @@
 
             document.getElementById('loginScreen').innerHTML = '<h2>Подключение...</h2>';
 
-            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const url = `${protocol}//${location.host}`;
+            ws = io();
 
-            try {
-                ws = new WebSocket(url);
-            } catch(e) {
-                document.getElementById('loginScreen').innerHTML = '<h2>🏰 Крепость</h2><h2>Кооп игра на 6 человек</h2><input type="text" id="nameInput" placeholder="Твоё имя" maxlength="15"><input type="text" id="roomInput" placeholder="Код комнаты" value="default"><button onclick="joinGame()">Войти><div style="color:red;margin-top:10px">Ошибка: ' + e.message + '</div>';
-                return;
-            }
+            ws.on('connect', () => {
+                ws.emit('join', { name, room });
+            });
 
-            ws.onopen = () => {
-                ws.send(JSON.stringify({ type: 'join', name, room }));
-            };
-            ws.onmessage = (e) => {
-                const msg = JSON.parse(e.data);
-                handleMessage(msg);
-            };
-            ws.onerror = (e) => {
-                alert('Ошибка подключения к серверу!');
-                location.reload();
-            };
-            ws.onclose = () => {
-                if (document.getElementById('lobbyScreen').style.display !== 'flex') {
-                    alert('Соединение разорвано');
+            ws.on('roomState', (msg) => {
+                gameState = msg;
+                myId = ws.id;
+                updateLobby();
+                updateHUD();
+                if (msg.phase === 'build' || msg.phase === 'defense') {
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('lobbyScreen').style.display = 'none';
+                    document.getElementById('gameCanvas').style.display = 'block';
+                    document.getElementById('hud').style.display = 'flex';
+                    document.getElementById('playerList').style.display = 'block';
+                    document.getElementById('controlsInfo').style.display = 'block';
+                    if (msg.phase === 'build') document.getElementById('buildToolbar').style.display = 'flex';
+                    if (msg.phase === 'defense') document.getElementById('minimap').style.display = 'block';
+                    render();
                 }
-            };
+            });
+
+            ws.on('phaseChange', (msg) => {
+                showMessage(msg.message);
+                if (msg.phase === 'defense') {
+                    document.getElementById('buildToolbar').style.display = 'none';
+                    document.getElementById('minimap').style.display = 'block';
+                }
+            });
+
+            ws.on('playerMove', (msg) => {
+                if (gameState) {
+                    const p = gameState.players.find(p => p.id === msg.id);
+                    if (p) { p.x = msg.x; p.y = msg.y; }
+                }
+            });
+
+            ws.on('shoot', (msg) => {
+                createBullet(msg.playerId, msg.tx, msg.ty);
+            });
+
+            ws.on('gameEnd', (msg) => {
+                document.getElementById('endScreen').style.display = 'flex';
+                document.getElementById('endTitle').textContent = msg.won ? '🏆 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
+                document.getElementById('endTitle').style.color = msg.won ? '#2ecc71' : '#e74c3c';
+                document.getElementById('endScore').textContent = `Счёт: ${msg.score}`;
+            });
+
+            ws.on('error_msg', (msg) => {
+                alert(msg);
+                location.reload();
+            });
+
+            ws.on('connect_error', () => {
+                alert('Не удалось подключиться к серверу!');
+                location.reload();
+            });
         }
 
         function handleMessage(msg) {
@@ -306,7 +340,6 @@
                         document.getElementById('gameCanvas').style.display = 'block';
                         document.getElementById('hud').style.display = 'flex';
                         document.getElementById('playerList').style.display = 'block';
-                        document.getElementById('controlsInfo').style.display = 'block';
                         if (msg.phase === 'build') {
                             document.getElementById('buildToolbar').style.display = 'flex';
                         }
@@ -364,7 +397,7 @@
             const me = gameState?.players.find(p => p.name === document.getElementById('nameInput').value);
             if (me) myId = me.id;
             const ready = !gameState?.players.find(p => p.id === myId)?.ready;
-            ws.send(JSON.stringify({ type: 'action', action: { type: 'ready', ready } }));
+            ws.emit('action', { type: 'ready', ready });
             document.getElementById('readyBtn').textContent = ready ? 'Не готов' : 'Готов';
         }
 
@@ -401,7 +434,7 @@
         }
 
         function endBuild() {
-            ws.send(JSON.stringify({ type: 'action', action: { type: 'endBuild' } }));
+            ws.emit('action', { type: 'endBuild' });
         }
 
         function showMessage(text) {
@@ -545,7 +578,7 @@
                 if (keys['a']) dx = -5;
                 if (keys['d']) dx = 5;
                 if (dx || dy) {
-                    ws.send(JSON.stringify({ type: 'action', action: { type: 'move', dx, dy } }));
+                    ws.emit('action', { type: 'move', dx, dy });
                 }
             }
         });
@@ -561,14 +594,14 @@
 
             if (gameState?.phase === 'build') {
                 if (selectedTool === 'wall') {
-                    ws.send(JSON.stringify({ type: 'action', action: { type: 'placeWall', x, y } }));
+                    ws.emit('action', { type: 'placeWall', x, y });
                 } else if (selectedTool === 'tower') {
-                    ws.send(JSON.stringify({ type: 'action', action: { type: 'placeTower', x, y } }));
+                    ws.emit('action', { type: 'placeTower', x, y });
                 }
             }
 
             if (gameState?.phase === 'defense') {
-                ws.send(JSON.stringify({ type: 'action', action: { type: 'shoot', targetX: x, targetY: y } }));
+                ws.emit('action', { type: 'shoot', targetX: x, targetY: y });
             }
         });
 
@@ -589,7 +622,7 @@
                     if (dist < minDist) { minDist = dist; closest = p; }
                 }
                 if (closest) {
-                    ws.send(JSON.stringify({ type: 'action', action: { type: 'heal', targetId: closest.id } }));
+                    ws.emit('action', { type: 'heal', targetId: closest.id });
                 }
             }
         });
