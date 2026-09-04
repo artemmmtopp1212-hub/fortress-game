@@ -114,7 +114,7 @@
         <button onclick="location.reload()">Заново</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
     (function(){
@@ -495,10 +495,14 @@
         function animate(){
             if(!gameRunning)return;
             renderLoop=requestAnimationFrame(animate);
-            updateCamera();
-            updateScene();
-            updateParticles();
-            if(renderer&&scene&&camera) renderer.render(scene,camera);
+            try{
+                updateCamera();
+                updateScene();
+                updateParticles();
+                if(renderer&&scene&&camera) renderer.render(scene,camera);
+            }catch(err){
+                if(gameRunning){gameRunning=false;cancelAnimationFrame(renderLoop);console.error('Render error:',err);}
+            }
         }
 
         function updateCamera(){
@@ -526,7 +530,7 @@
                     if(!mesh){
                         mesh=new THREE.Group();
                         var r=ROLES[p.roleKey]||{color:'#fff'};
-                        s=new THREE.Mesh(new THREE.CapsuleGeometry(4,8,3,6),new THREE.MeshLambertMaterial({color:new THREE.Color(r.color||'#fff')}));
+                        s=new THREE.Mesh(new THREE.CylinderGeometry(4,4,16,8),new THREE.MeshLambertMaterial({color:new THREE.Color(r.color||'#fff')}));
                         s.position.y=8; s.castShadow=true; mesh.add(s);
                         var head=new THREE.Mesh(new THREE.SphereGeometry(3.5,6,6),new THREE.MeshLambertMaterial({color:0xffdbac}));
                         head.position.y=18; head.castShadow=true; mesh.add(head);
