@@ -3,1158 +3,553 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Крепость - Кооп Игра</title>
+    <title>Крепость 3D</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #1a1a2e;
-            color: #fff;
-            font-family: 'Segoe UI', sans-serif;
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-        }
-        .screen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        .screen.hidden { display: none !important; }
-        #loginScreen { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
-        #charSelectScreen { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
-        #lobbyScreen { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
-        h1 { font-size: 48px; margin-bottom: 10px; text-shadow: 0 0 20px #e94560; color: #e94560; }
-        h2 { margin-bottom: 20px; color: #aaa; font-size: 20px; }
-        input {
-            padding: 12px 24px; font-size: 18px;
-            border: 2px solid #e94560; background: rgba(255,255,255,0.1);
-            color: #fff; border-radius: 8px; margin-bottom: 15px;
-            width: 300px; text-align: center;
-        }
-        button {
-            padding: 12px 32px; font-size: 18px; border: none;
-            background: #e94560; color: #fff; border-radius: 8px;
-            cursor: pointer; transition: all 0.3s; margin: 5px;
-        }
-        button:hover { background: #ff6b6b; transform: scale(1.05); }
-        button:disabled { background: #555; cursor: not-allowed; transform: none; }
-        .role-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin: 20px 0;
-            max-width: 650px;
-        }
-        .role-card {
-            background: rgba(255,255,255,0.08);
-            border: 2px solid #555;
-            border-radius: 10px;
-            padding: 15px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-            min-width: 180px;
-        }
-        .role-card:hover { border-color: #e94560; background: rgba(233,69,96,0.15); }
-        .role-card.selected { border-color: #e94560; background: rgba(233,69,96,0.25); box-shadow: 0 0 15px rgba(233,69,96,0.3); }
-        .role-card .icon { font-size: 36px; }
-        .role-card .name { font-size: 16px; font-weight: bold; margin: 5px 0; }
-        .role-card .desc { font-size: 11px; color: #aaa; }
-        .role-card .passive { font-size: 10px; color: #9b59b6; margin-top: 4px; }
-        .role-card .stats { font-size: 10px; color: #888; margin-top: 3px; }
-        #lobbyPlayers {
-            max-height: 300px;
-            overflow-y: auto;
-            margin: 10px 0;
-        }
-        .lobby-player {
-            background: rgba(255,255,255,0.08);
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin: 5px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .lobby-player.ready { background: rgba(46,204,113,0.2); border: 1px solid #2ecc71; }
-        .lobby-player .role-icon { font-size: 24px; }
-        .lobby-player .p-name { font-size: 16px; font-weight: bold; }
-        .lobby-player .p-role { font-size: 12px; color: #aaa; }
-        canvas#gameCanvas {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            cursor: crosshair;
-        }
-        #hud {
-            position: fixed;
-            top: 10px; left: 10px; right: 10px;
-            display: none;
-            justify-content: space-between;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .hud-panel {
-            background: rgba(0,0,0,0.75);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-        .hp-bar {
-            width: 120px; height: 6px;
-            background: #333; border-radius: 3px; margin-top: 2px;
-        }
-        .hp-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
-        .hp-fill.green { background: #2ecc71; }
-        .hp-fill.red { background: #e74c3c; }
-        .hp-fill.yellow { background: #f1c40f; }
-        .xp-bar { width: 120px; height: 4px; background: #333; border-radius: 2px; margin-top: 2px; }
-        .xp-fill { height: 100%; background: #9b59b6; border-radius: 2px; transition: width 0.3s; }
-        #playerList {
-            position: fixed;
-            right: 10px; top: 50px;
-            background: rgba(0,0,0,0.75);
-            padding: 10px; border-radius: 8px;
-            font-size: 12px;
-            display: none;
-            z-index: 10;
-            min-width: 160px;
-        }
-        .plist-item {
-            margin: 3px 0;
-            padding: 4px 8px;
-            border-radius: 4px;
-            border-left: 3px solid #fff;
-        }
-        .plist-item.dead { opacity: 0.4; }
-        #buildToolbar {
-            position: fixed;
-            bottom: 10px; left: 50%;
-            transform: translateX(-50%);
-            display: none;
-            gap: 6px;
-            z-index: 10;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 90vw;
-        }
-        .build-btn {
-            padding: 6px 12px;
-            background: rgba(0,0,0,0.8);
-            border: 2px solid #555;
-            color: #fff;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            white-space: nowrap;
-            transition: all 0.15s;
-        }
-        .build-btn:hover, .build-btn.active { border-color: #e94560; background: rgba(233,69,96,0.3); }
-        .build-btn.green-btn { border-color: #2ecc71; background: rgba(46,204,113,0.3); }
-        .build-btn.green-btn:hover { background: rgba(46,204,113,0.5); }
-        .build-sep { color: #555; font-size: 12px; align-self: center; margin: 0 2px; }
-        #abilityBar {
-            position: fixed;
-            bottom: 10px; left: 50%;
-            transform: translateX(-50%);
-            display: none;
-            gap: 8px;
-            z-index: 10;
-        }
-        .ability-btn {
-            width: 50px; height: 50px;
-            background: rgba(0,0,0,0.8);
-            border: 2px solid #555;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 10px;
-            position: relative;
-            transition: all 0.15s;
-        }
-        .ability-btn:hover { border-color: #e94560; }
-        .ability-btn.on-cooldown { opacity: 0.5; }
-        .ability-btn .a-icon { font-size: 20px; }
-        .ability-btn .a-key { position: absolute; top: 2px; left: 4px; font-size: 9px; color: #aaa; }
-        .ability-btn .a-cd { position: absolute; bottom: 2px; font-size: 9px; color: #e74c3c; }
-        #chatPanel {
-            position: fixed;
-            bottom: 70px; left: 10px;
-            width: 300px;
-            z-index: 10;
-            display: none;
-        }
-        #chatMessages {
-            background: rgba(0,0,0,0.5);
-            border-radius: 8px 8px 0 0;
-            padding: 8px;
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 12px;
-        }
-        .chat-msg { margin: 2px 0; word-wrap: break-word; }
-        #chatInput {
-            width: 100%;
-            padding: 6px 10px;
-            font-size: 12px;
-            border: 1px solid #555;
-            background: rgba(0,0,0,0.8);
-            color: #fff;
-            border-radius: 0 0 8px 8px;
-            outline: none;
-        }
-        #minimap {
-            position: fixed;
-            bottom: 70px; right: 10px;
-            border: 2px solid #555;
-            border-radius: 5px;
-            display: none;
-            z-index: 10;
-        }
-        #message {
-            position: fixed;
-            top: 35%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 36px;
-            text-shadow: 0 0 20px #e94560;
-            display: none;
-            pointer-events: none;
-            z-index: 20;
-            animation: fadeInOut 2.5s;
-            text-align: center;
-        }
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-            80% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-        #endScreen { background: rgba(0,0,0,0.92); z-index: 200; }
-        #endScreen h1 { font-size: 56px; margin-bottom: 10px; }
-        #endScreen .score { font-size: 22px; margin: 10px; color: #aaa; }
-        .results-table {
-            margin: 15px 0;
-            border-collapse: collapse;
-            min-width: 400px;
-        }
-        .results-table th, .results-table td {
-            padding: 8px 16px;
-            border-bottom: 1px solid #333;
-            text-align: left;
-            font-size: 14px;
-        }
-        .results-table th { color: #aaa; font-size: 12px; }
-        #controlsInfo {
-            position: fixed;
-            bottom: 10px; left: 10px;
-            font-size: 11px;
-            color: #555;
-            display: none;
-            z-index: 10;
-        }
-        #buildTimer {
-            position: fixed;
-            top: 50px; left: 50%;
-            transform: translateX(-50%);
-            font-size: 28px;
-            color: #f1c40f;
-            display: none;
-            z-index: 10;
-            text-shadow: 0 0 10px rgba(241,196,15,0.5);
-        }
-        #bossWarning {
-            position: fixed;
-            top: 30%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 42px;
-            color: #e74c3c;
-            display: none;
-            z-index: 25;
-            text-shadow: 0 0 30px #e74c3c;
-            animation: bossFlash 1s ease-in-out 3;
-            text-align: center;
-        }
-        @keyframes bossFlash {
-            0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.15); }
-        }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#000;color:#fff;font-family:'Segoe UI',sans-serif;overflow:hidden;width:100vw;height:100vh}
+        .screen{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:100}
+        .screen.hidden{display:none!important}
+        #loginScreen{background:linear-gradient(135deg,#16213e,#0f3460)}
+        #charSelect{background:linear-gradient(135deg,#16213e,#0f3460)}
+        #lobbyScreen{background:linear-gradient(135deg,#16213e,#0f3460)}
+        h1{font-size:48px;margin-bottom:10px;text-shadow:0 0 20px #e94560;color:#e94560}
+        h2{margin-bottom:20px;color:#aaa;font-size:20px}
+        input{padding:12px 24px;font-size:18px;border:2px solid #e94560;background:rgba(255,255,255,0.1);color:#fff;border-radius:8px;margin-bottom:15px;width:300px;text-align:center}
+        button{padding:12px 32px;font-size:18px;border:none;background:#e94560;color:#fff;border-radius:8px;cursor:pointer;transition:all .3s;margin:5px}
+        button:hover{background:#ff6b6b;transform:scale(1.05)}
+        button:disabled{background:#555;cursor:not-allowed;transform:none}
+        .role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0;max-width:650px}
+        .role-card{background:rgba(255,255,255,0.08);border:2px solid #555;border-radius:10px;padding:15px;cursor:pointer;transition:all .2s;text-align:center;min-width:170px}
+        .role-card:hover{border-color:#e94560;background:rgba(233,69,96,0.15)}
+        .role-card.selected{border-color:#e94560;background:rgba(233,69,96,0.25);box-shadow:0 0 15px rgba(233,69,96,0.3)}
+        .role-card .icon{font-size:36px}
+        .role-card .name{font-size:15px;font-weight:bold;margin:5px 0}
+        .role-card .desc{font-size:11px;color:#aaa}
+        .role-card .passive{font-size:10px;color:#9b59b6;margin-top:3px}
+        .role-card .stats{font-size:10px;color:#888;margin-top:2px}
+        .lobby-player{background:rgba(255,255,255,0.08);padding:10px 20px;border-radius:8px;margin:5px 0;display:flex;align-items:center;gap:10px}
+        .lobby-player.ready{background:rgba(46,204,113,0.2);border:1px solid #2ecc71}
+        canvas#gameCanvas{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;cursor:crosshair}
+        #hud{position:fixed;top:10px;left:10px;right:10px;display:none;justify-content:space-between;pointer-events:none;z-index:10}
+        .hud-panel{background:rgba(0,0,0,0.75);padding:10px 15px;border-radius:8px;font-size:13px;line-height:1.5}
+        .hp-bar{width:120px;height:6px;background:#333;border-radius:3px;margin-top:2px}
+        .hp-fill{height:100%;border-radius:3px;transition:width .3s}
+        #playerList{position:fixed;right:10px;top:50px;background:rgba(0,0,0,0.75);padding:10px;border-radius:8px;font-size:12px;display:none;z-index:10;min-width:160px}
+        .plist-item{margin:3px 0;padding:4px 8px;border-radius:4px;border-left:3px solid #fff}
+        #buildToolbar{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:none;gap:6px;z-index:10;flex-wrap:wrap;justify-content:center;max-width:90vw}
+        .build-btn{padding:6px 12px;background:rgba(0,0,0,0.8);border:2px solid #555;color:#fff;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;transition:all .15s}
+        .build-btn:hover,.build-btn.active{border-color:#e94560;background:rgba(233,69,96,0.3)}
+        .build-btn.green{border-color:#2ecc71;background:rgba(46,204,113,0.3)}
+        .build-btn.green:hover{background:rgba(46,204,113,0.5)}
+        #abilityBar{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:none;gap:8px;z-index:10}
+        .ability-btn{width:50px;height:50px;background:rgba(0,0,0,0.8);border:2px solid #555;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;position:relative;transition:all .15s}
+        .ability-btn:hover{border-color:#e94560}
+        .ability-btn.on-cd{opacity:.5}
+        .ability-btn .a-icon{font-size:20px}
+        .ability-btn .a-key{position:absolute;top:2px;left:4px;font-size:9px;color:#aaa}
+        .ability-btn .a-cd{position:absolute;bottom:2px;font-size:9px;color:#e74c3c}
+        #chatPanel{position:fixed;bottom:70px;left:10px;width:300px;z-index:10;display:none}
+        #chatMessages{background:rgba(0,0,0,0.5);border-radius:8px 8px 0 0;padding:8px;max-height:150px;overflow-y:auto;font-size:12px}
+        .chat-msg{margin:2px 0;word-wrap:break-word}
+        #chatInput{width:100%;padding:6px 10px;font-size:12px;border:1px solid #555;background:rgba(0,0,0,0.8);color:#fff;border-radius:0 0 8px 8px;outline:none}
+        #minimap{position:fixed;bottom:70px;right:10px;border:2px solid #555;border-radius:5px;display:none;z-index:10}
+        #message{position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);font-size:36px;text-shadow:0 0 20px #e94560;display:none;pointer-events:none;z-index:20;text-align:center;animation:fadeInOut 2.5s}
+        @keyframes fadeInOut{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}80%{opacity:1}100%{opacity:0}}
+        #endScreen{background:rgba(0,0,0,0.92);z-index:200}
+        #endScreen h1{font-size:56px;margin-bottom:10px}
+        .results-table{margin:15px 0;border-collapse:collapse;min-width:400px}
+        .results-table th,.results-table td{padding:8px 16px;border-bottom:1px solid #333;text-align:left;font-size:14px}
+        .results-table th{color:#aaa;font-size:12px}
+        #controlsInfo{position:fixed;bottom:10px;left:10px;font-size:11px;color:#555;display:none;z-index:10}
+        #buildTimer{position:fixed;top:50px;left:50%;transform:translateX(-50%);font-size:28px;color:#f1c40f;display:none;z-index:10;text-shadow:0 0 10px rgba(241,196,15,0.5)}
+        #bossWarning{position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);font-size:42px;color:#e74c3c;display:none;z-index:25;text-shadow:0 0 30px #e74c3c;text-align:center;animation:bossFlash 1s ease-in-out 3}
+        @keyframes bossFlash{0%,100%{opacity:1;transform:translate(-50%,-50%) scale(1)}50%{opacity:.6;transform:translate(-50%,-50%) scale(1.15)}}
+        #crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:5;display:none}
+        #crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(255,255,255,0.6)}
+        #crosshair::before{width:2px;height:12px;left:50%;top:50%;transform:translate(-50%,-50%)}
+        #crosshair::after{width:12px;height:2px;left:50%;top:50%;transform:translate(-50%,-50%)}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#555;border-radius:2px}
     </style>
 </head>
 <body>
     <div id="loginScreen" class="screen">
-        <h1>🏰 Крепость</h1>
+        <h1>🏰 Крепость 3D</h1>
         <h2>Кооп игра на 6 человек</h2>
         <input type="text" id="nameInput" placeholder="Твоё имя" maxlength="15">
         <input type="text" id="roomInput" placeholder="Код комнаты" value="default">
         <button onclick="showCharSelect()">Далее</button>
     </div>
-
-    <div id="charSelectScreen" class="screen hidden">
+    <div id="charSelect" class="screen hidden">
         <h2>Выбери класс</h2>
         <div class="role-grid" id="roleGrid"></div>
-        <button onclick="joinGame()">Войти в игру</button>
+        <button onclick="joinGame()">Войти</button>
     </div>
-
     <div id="lobbyScreen" class="screen hidden">
         <h2>Лобби</h2>
         <div id="lobbyPlayers"></div>
-        <p id="lobbyInfo" style="margin:10px;color:#aaa;">Ждём игроков...</p>
+        <p id="lobbyInfo" style="margin:10px;color:#aaa">Ждём...</p>
         <button id="readyBtn" onclick="toggleReady()">Готов</button>
     </div>
-
     <canvas id="gameCanvas"></canvas>
-
-    <div id="hud">
-        <div class="hud-panel" id="leftHud"></div>
-        <div class="hud-panel" id="rightHud"></div>
-    </div>
-
+    <div id="crosshair"></div>
+    <div id="hud"><div class="hud-panel" id="leftHud"></div><div class="hud-panel" id="rightHud"></div></div>
     <div id="playerList"></div>
-
     <div id="buildToolbar"></div>
     <div id="abilityBar"></div>
-
-    <div id="chatPanel">
-        <div id="chatMessages"></div>
-        <input type="text" id="chatInput" placeholder="Написать..." maxlength="200">
-    </div>
-
+    <div id="chatPanel"><div id="chatMessages"></div><input type="text" id="chatInput" placeholder="Написать..." maxlength="200"></div>
     <div id="buildTimer"></div>
     <div id="message"></div>
     <div id="bossWarning"></div>
     <canvas id="minimap" width="150" height="112"></canvas>
-    <div id="controlsInfo">WASD - движение | ЛКМ - стрелять/ставить | 1-4 - способности | T - чат</div>
-
+    <div id="controlsInfo">WASD - движение | ЛКМ - стрелять/ставить | 1-4 - способности | T - чат | Колёсико - зум</div>
     <div id="endScreen" class="screen hidden">
         <h1 id="endTitle"></h1>
-        <div class="score" id="endScore"></div>
+        <div class="score" id="endScore" style="font-size:22px;margin:10px;color:#aaa"></div>
         <table class="results-table" id="resultsTable"></table>
         <button onclick="location.reload()">Заново</button>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const mmCanvas = document.getElementById('minimap');
-    const mmCtx = mmCanvas.getContext('2d');
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     const ROLES = {
-        BUILDER:  { name:'Строитель', icon:'🔨', color:'#f39c12', hp:120, ammo:30, coins:150, desc:'Строит стены, башни и ловушки.', passive:'Стены на 50% дешевле', abilities:['build_wall','build_tower','repair','build_trap'] },
-        ARCHER:   { name:'Стрелок',   icon:'🏹', color:'#e74c3c', hp:80,  ammo:80, coins:80,  desc:'Дальний бой, двойной урон.', passive:'Дальность x1.5', abilities:['double_shot','snipe','rain_arrows','poison_arrow'] },
-        ENGINEER: { name:'Инженер',   icon:'⚙️', color:'#3498db', hp:100, ammo:40, coins:120, desc:'Улучшает башни, ставит щиты.', passive:'Башни стреляют быстрее', abilities:['upgrade_turret','deploy_shield','repair_all','emp'] },
-        MEDIC:    { name:'Медик',     icon:'💊', color:'#2ecc71', hp:90,  ammo:50, coins:100, desc:'Лечит союзников, оживляет.', passive:'Лечение x1.5', abilities:['heal','heal_aoe','revive','shield'] },
-        MAGE:     { name:'Маг',       icon:'✨', color:'#9b59b6', hp:70,  ammo:60, coins:90,  desc:'Магические атаки, заморозка.', passive:'Крит 25%', abilities:['fireball','ice_wall','lightning','meteor'] },
-        SCOUT:    { name:'Разведчик', icon:'👁️', color:'#1abc9c', hp:75,  ammo:45, coins:110, desc:'Быстрый, видит ловушки.', passive:'Скорость x1.5', abilities:['speed_boost','trap_detect','mark_enemy','stealth'] }
+        BUILDER:{name:'Строитель',icon:'🔨',color:'#f39c12',hp:120,ammo:30,coins:150,desc:'Строит стены, башни, ловушки',passive:'Стены на 50% дешевле',abilities:['build_wall','build_tower','repair','build_trap']},
+        ARCHER:{name:'Стрелок',icon:'🏹',color:'#e74c3c',hp:80,ammo:80,coins:80,desc:'Дальний бой, двойной урон',passive:'Дальность x1.5',abilities:['double_shot','snipe','rain_arrows','poison_arrow']},
+        ENGINEER:{name:'Инженер',icon:'⚙️',color:'#3498db',hp:100,ammo:40,coins:120,desc:'Улучшает башни, щиты',passive:'Башни быстрее',abilities:['upgrade_turret','deploy_shield','repair_all','emp']},
+        MEDIC:{name:'Медик',icon:'💊',color:'#2ecc71',hp:90,ammo:50,coins:100,desc:'Лечит, оживляет',passive:'Лечение x1.5',abilities:['heal','heal_aoe','revive','shield']},
+        MAGE:{name:'Маг',icon:'✨',color:'#9b59b6',hp:70,ammo:60,coins:90,desc:'Магия, заморозка',passive:'Крит 25%',abilities:['fireball','ice_wall','lightning','meteor']},
+        SCOUT:{name:'Разведчик',icon:'👁️',color:'#1abc9c',hp:75,ammo:45,coins:110,desc:'Быстрый, детект ловушек',passive:'Скорость x1.5',abilities:['speed_boost','trap_detect','mark_enemy','stealth']}
     };
 
-    const WALL_TYPES = {
-        wood:  { name:'Дерево',    icon:'🪵', cost:10, hp:100 },
-        stone: { name:'Камень',    icon:'🧱', cost:20, hp:200 },
-        iron:  { name:'Железо',    icon:'⛓️', cost:35, hp:350 },
-        magic_wall: { name:'Магия', icon:'🌟', cost:50, hp:250 },
-        thorns:{ name:'Шипы',      icon:'🌵', cost:30, hp:80 }
-    };
+    const WALL_TYPES={wood:{name:'Дерево',icon:'🪵',cost:10},stone:{name:'Камень',icon:'🧱',cost:20},iron:{name:'Железо',icon:'⛓️',cost:35},magic_wall:{name:'Магия',icon:'🌟',cost:50},thorns:{name:'Шипы',icon:'🌵',cost:30}};
+    const TOWER_TYPES={arrow:{name:'Стрелы',icon:'🏹',cost:25},magic:{name:'Магия',icon:'🔮',cost:40},frost:{name:'Лёд',icon:'❄️',cost:35},fire:{name:'Огонь',icon:'🔥',cost:50},sniper:{name:'Снайпер',icon:'🎯',cost:60},healer:{name:'Лечение',icon:'💚',cost:45}};
+    const TRAP_TYPES={spike:{name:'Шипы',icon:'📍',cost:15},slow:{name:'Болото',icon:'🟤',cost:20},explosive:{name:'Взрыв',icon:'💣',cost:30},poison:{name:'Яд',icon:'🟢',cost:25},teleport:{name:'Телепорт',icon:'🌀',cost:40}};
+    const ABILITY_INFO={build_wall:{icon:'🧱',name:'Стена'},build_tower:{icon:'🗼',name:'Башня'},repair:{icon:'🔧',name:'Ремонт'},build_trap:{icon:'📍',name:'Ловушка'},double_shot:{icon:'🏹',name:'2 выстрела'},snipe:{icon:'🎯',name:'Снайпер'},rain_arrows:{icon:'🌧️',name:'Дождь'},poison_arrow:{icon:'🟢',name:'Яд'},upgrade_turret:{icon:'⬆️',name:'Улучшить'},deploy_shield:{icon:'🛡️',name:'Щит'},repair_all:{icon:'🔧',name:'Починить'},emp:{icon:'⚡',name:'EMP'},heal:{icon:'💚',name:'Лечение'},heal_aoe:{icon:'💗',name:'AOE'},revive:{icon:'💫',name:'Воскрешение'},shield:{icon:'🛡️',name:'Щит'},fireball:{icon:'🔥',name:'Огнешар'},ice_wall:{icon:'🧊',name:'Лед.стена'},lightning:{icon:'⚡',name:'Молния'},meteor:{icon:'☄️',name:'Метеор'},speed_boost:{icon:'💨',name:'Скорость'},trap_detect:{icon:'👁️',name:'Детект'},mark_enemy:{icon:'🎯',name:'Метка'},stealth:{icon:'👻',name:'Стелс'}};
 
-    const TOWER_TYPES = {
-        arrow:  { name:'Стрелы',   icon:'🏹', cost:25 },
-        magic:  { name:'Магия',    icon:'🔮', cost:40 },
-        frost:  { name:'Лёд',      icon:'❄️', cost:35 },
-        fire:   { name:'Огонь',    icon:'🔥', cost:50 },
-        sniper: { name:'Снайпер',  icon:'🎯', cost:60 },
-        healer: { name:'Лечение',  icon:'💚', cost:45 }
-    };
+    const MAP_W=1200, MAP_H=800, CENTER_X=600, CENTER_Y=400;
 
-    const TRAP_TYPES = {
-        spike:     { name:'Шипы',      icon:'📍', cost:15 },
-        slow:      { name:'Болото',    icon:'🟤', cost:20 },
-        explosive: { name:'Взрыв',     icon:'💣', cost:30 },
-        poison:    { name:'Яд',        icon:'🟢', cost:25 },
-        teleport:  { name:'Телепорт',  icon:'🌀', cost:40 }
-    };
+    let socket=null, myId=null, gs=null, selectedRole=null;
+    let selectedTool='none', buildSubType='wood';
+    let keys={}, mouseX=0, mouseY=0;
+    let camera, scene, renderer, controls;
+    let groundMesh, fortressGroup, playerMeshes={}, mobMeshes={}, wallMeshes={}, towerMeshes={}, trapMeshes={}, projectileMeshes=[];
+    let particleGroup, envGroup;
+    let cameraDistance=300, cameraAngle=0, cameraPitch=0.8;
+    let gameRunning=false, moveInterval=null;
+    let clock=new THREE.Clock();
 
-    const ABILITY_INFO = {
-        build_wall:     { icon:'🧱', name:'Стена' },
-        build_tower:    { icon:'🗼', name:'Башня' },
-        repair:         { icon:'🔧', name:'Ремонт' },
-        build_trap:     { icon:'📍', name:'Ловушка' },
-        double_shot:    { icon:'🏹', name:'2 выстрела' },
-        snipe:          { icon:'🎯', name:'Снайпер' },
-        rain_arrows:    { icon:'🌧️', name:'Дождь' },
-        poison_arrow:   { icon:'🟢', name:'Яд' },
-        upgrade_turret: { icon:'⬆️', name:'Улучшить' },
-        deploy_shield:  { icon:'🛡️', name:'Щит' },
-        repair_all:     { icon:'🔧', name:'Починить всё' },
-        emp:            { icon:'⚡', name:'EMP' },
-        heal:           { icon:'💚', name:'Лечение' },
-        heal_aoe:       { icon:'💗', name:'Лечение AOE' },
-        revive:         { icon:' resurrection', name:'Воскрешение' },
-        shield:         { icon:'🛡️', name:'Щит' },
-        fireball:       { icon:'🔥', name:'Огнешар' },
-        ice_wall:       { icon:'🧊', name:'Лед.стена' },
-        lightning:      { icon:'⚡', name:'Молния' },
-        meteor:         { icon:'☄️', name:'Метеор' },
-        speed_boost:    { icon:'💨', name:'Скорость' },
-        trap_detect:    { icon:'👁️', name:'Детект' },
-        mark_enemy:     { icon:'🎯', name:'Метка' },
-        stealth:        { icon:'👻', name:'Стелс' }
-    };
-
-    const MOB_ICONS = {
-        'Гоблин':'👺','Орк':'👹','Скелет':'💀','Тролль':'🧌','Тёмный маг':'🧙',
-        'Виверна':'🐉','Демон':'😈','Дракон':'🐲','Лич':'☠️','Архидемон':'👿'
-    };
-
-    const MAP_W = 1200, MAP_H = 800;
-
-    let socket = null;
-    let myId = null;
-    let gs = null;
-    let selectedRole = null;
-    let selectedTool = 'none';
-    let buildSubType = 'wood';
-    let keys = {};
-    let mouseX = 0, mouseY = 0;
-    let particles = [];
-    let shotAnims = [];
-    let camera = { x: 0, y: 0 };
-    let gameRunning = false;
-    let moveInterval = null;
-
-    function showCharSelect() {
-        const name = document.getElementById('nameInput').value.trim();
-        if (!name) return alert('Введи имя!');
+    window.showCharSelect=function(){
+        const name=document.getElementById('nameInput').value.trim();
+        if(!name)return alert('Введи имя!');
         document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('charSelectScreen').classList.remove('hidden');
+        document.getElementById('charSelect').classList.remove('hidden');
         renderRoleGrid();
-    }
+    };
 
-    function renderRoleGrid() {
-        const grid = document.getElementById('roleGrid');
-        grid.innerHTML = Object.entries(ROLES).map(([key, r]) => `
-            <div class="role-card" data-role="${key}" onclick="selectRole('${key}')">
+    function renderRoleGrid(){
+        document.getElementById('roleGrid').innerHTML=Object.entries(ROLES).map(([k,r])=>`
+            <div class="role-card" data-role="${k}" onclick="window.selectRole('${k}')">
                 <div class="icon">${r.icon}</div>
                 <div class="name" style="color:${r.color}">${r.name}</div>
                 <div class="desc">${r.desc}</div>
                 <div class="passive">⭐ ${r.passive}</div>
                 <div class="stats">❤️${r.hp} 🔫${r.ammo} 💰${r.coins}</div>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
-    function selectRole(key) {
-        selectedRole = key;
-        document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+    window.selectRole=function(key){
+        selectedRole=key;
+        document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected'));
         document.querySelector(`[data-role="${key}"]`).classList.add('selected');
-    }
+    };
 
-    function joinGame() {
-        const name = document.getElementById('nameInput').value.trim();
-        const room = document.getElementById('roomInput').value.trim() || 'default';
-        if (!name) return alert('Введи имя!');
-        if (!selectedRole) return alert('Выбери класс!');
-
-        document.getElementById('charSelectScreen').classList.add('hidden');
+    window.joinGame=function(){
+        const name=document.getElementById('nameInput').value.trim();
+        const room=document.getElementById('roomInput').value.trim()||'default';
+        if(!name)return alert('Введи имя!');
+        if(!selectedRole)return alert('Выбери класс!');
+        document.getElementById('charSelect').classList.add('hidden');
         document.getElementById('lobbyScreen').classList.remove('hidden');
-        document.getElementById('lobbyInfo').textContent = 'Подключение...';
+        socket=io();
+        socket.on('connect',()=>{myId=socket.id;socket.emit('join',{name,room,characterClass:selectedRole})});
+        setupSocketHandlers();
+        document.getElementById('chatInput').onkeydown=(e)=>{e.stopPropagation();if(e.key==='Enter'){const v=document.getElementById('chatInput').value.trim();if(v){socket.emit('action',{type:'chat',message:v});document.getElementById('chatInput').value=''}}};
+    };
 
-        socket = io();
-
-        socket.on('connect', () => {
-            myId = socket.id;
-            socket.emit('join', { name, room, characterClass: selectedRole });
-        });
-
-        socket.on('roomState', (state) => {
-            gs = state;
-            myId = socket.id;
-            updateLobby();
-            if (state.phase === 'build' || state.phase === 'defense') {
-                startGameView();
-            }
-            updateHUD();
-            updateBuildToolbar();
-            updateAbilityBar();
-            updatePlayerList();
-        });
-
-        socket.on('phaseChange', (msg) => {
-            showMessage(msg.message || '');
-            if (msg.phase === 'defense') {
-                document.getElementById('buildToolbar').style.display = 'none';
-                document.getElementById('minimap').style.display = 'block';
-                document.getElementById('controlsInfo').style.display = 'block';
-                document.getElementById('buildTimer').style.display = 'none';
-                selectedTool = 'none';
-            }
-            if (msg.phase === 'build') {
-                document.getElementById('buildToolbar').style.display = 'flex';
-                document.getElementById('minimap').style.display = 'block';
-                document.getElementById('buildTimer').style.display = 'block';
-                document.getElementById('abilityBar').style.display = 'none';
-            }
-        });
-
-        socket.on('playerMove', (msg) => {
-            if (gs) {
-                const p = gs.players.find(p => p.id === msg.id);
-                if (p) { p.x = msg.x; p.y = msg.y; if (msg.direction) p.direction = msg.direction; }
-            }
-        });
-
-        socket.on('explosion', (msg) => {
-            for (let i = 0; i < 12; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 1 + Math.random() * 3;
-                particles.push({
-                    x: msg.x, y: msg.y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,
-                    life: 30 + Math.random() * 20,
-                    maxLife: 50,
-                    color: msg.color || '#ff4500',
-                    size: 2 + Math.random() * 4
-                });
-            }
-        });
-
-        socket.on('towerShot', (msg) => {
-            shotAnims.push({
-                x1: 0, y1: 0,
-                x2: msg.targetX, y2: msg.targetY,
-                color: msg.color || '#fff',
-                life: 8,
-                towerId: msg.towerId
-            });
-        });
-
-        socket.on('bossSpawn', (msg) => {
-            const bw = document.getElementById('bossWarning');
-            bw.textContent = `${msg.icon} ${msg.name} ПОЯВИЛСЯ!`;
-            bw.style.display = 'block';
-            setTimeout(() => { bw.style.display = 'none'; }, 4000);
-        });
-
-        socket.on('fortressHit', (msg) => {
-            if (gs) {
-                gs.fortressHP = msg.hp;
-                gs.fortressMaxHP = msg.maxHp;
-            }
-            for (let i = 0; i < 8; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                particles.push({
-                    x: MAP_W/2, y: MAP_H/2,
-                    vx: Math.cos(angle) * (1 + Math.random() * 2),
-                    vy: Math.sin(angle) * (1 + Math.random() * 2),
-                    life: 20, maxLife: 20,
-                    color: '#e74c3c', size: 3
-                });
-            }
-        });
-
-        socket.on('wallDestroyed', (msg) => {
-            for (let i = 0; i < 10; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                particles.push({
-                    x: msg.x, y: msg.y,
-                    vx: Math.cos(angle) * (1 + Math.random() * 3),
-                    vy: Math.sin(angle) * (1 + Math.random() * 3),
-                    life: 25, maxLife: 25,
-                    color: '#8B4513', size: 2 + Math.random() * 3
-                });
-            }
-        });
-
-        socket.on('trapTriggered', (msg) => {
-            for (let i = 0; i < 6; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                particles.push({
-                    x: msg.x, y: msg.y,
-                    vx: Math.cos(angle) * 2,
-                    vy: Math.sin(angle) * 2,
-                    life: 20, maxLife: 20,
-                    color: msg.type === 'explosive' ? '#FF4500' : '#9b59b6',
-                    size: 3
-                });
-            }
-        });
-
-        socket.on('buildTimer', (msg) => {
-            const el = document.getElementById('buildTimer');
-            el.style.display = 'block';
-            el.textContent = `🏗️ Стройте! ${msg.timeLeft}с`;
-            if (msg.timeLeft <= 10) el.style.color = '#e74c3c';
-            else el.style.color = '#f1c40f';
-        });
-
-        socket.on('chat', (msg) => {
-            const div = document.getElementById('chatMessages');
-            div.innerHTML += `<div class="chat-msg">${msg.text}</div>`;
-            div.scrollTop = div.scrollHeight;
-            if (div.children.length > 50) div.removeChild(div.firstChild);
-        });
-
-        socket.on('swapPosition', (msg) => {
-            if (gs) {
-                const p1 = gs.players.find(p => p.id === msg.p1.id);
-                const p2 = gs.players.find(p => p.id === msg.p2.id);
-                if (p1) { p1.x = msg.p1.x; p1.y = msg.p1.y; }
-                if (p2) { p2.x = msg.p2.x; p2.y = msg.p2.y; }
-            }
-        });
-
-        socket.on('gameEnd', (msg) => {
-            gameRunning = false;
-            if (moveInterval) clearInterval(moveInterval);
-            const el = document.getElementById('endScreen');
-            el.classList.remove('hidden');
-            document.getElementById('endTitle').textContent = msg.won ? '🏆 ПОБЕДА!' : '💀 ПОРАЖЕНИЕ';
-            document.getElementById('endTitle').style.color = msg.won ? '#2ecc71' : '#e74c3c';
-            document.getElementById('endScore').textContent = `Счёт: ${msg.score} | Волна: ${msg.wave} | Убито: ${msg.totalKills}`;
-            if (msg.results && msg.results.length) {
-                let html = '<tr><th>#</th><th>Игрок</th><th>Класс</th><th>Убийства</th><th>Урон</th><th>Очки</th><th>Ур.</th></tr>';
-                msg.results.forEach((r, i) => {
-                    html += `<tr><td>${i+1}</td><td>${r.name}</td><td>${r.role}</td><td>${r.kills}</td><td>${r.damage}</td><td>${r.score}</td><td>${r.level}</td></tr>`;
-                });
-                document.getElementById('resultsTable').innerHTML = html;
-            }
-        });
-
-        socket.on('error_msg', (msg) => {
-            alert(msg);
-            location.reload();
-        });
-
-        socket.on('connect_error', () => {
-            alert('Не удалось подключиться!');
-            location.reload();
-        });
-
-        document.getElementById('chatInput').addEventListener('keydown', (e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter') {
-                const val = document.getElementById('chatInput').value.trim();
-                if (val) { socket.emit('action', { type: 'chat', message: val }); document.getElementById('chatInput').value = ''; }
-            }
-        });
+    function setupSocketHandlers(){
+        socket.on('roomState',(state)=>{gs=state;myId=socket.id;updateLobby();if(state.phase==='build'||state.phase==='defense')startGameView();updateHUD();updateBuildToolbar();updateAbilityBar();updatePlayerList()});
+        socket.on('phaseChange',(msg)=>{showMessage(msg.message||'');if(msg.phase==='defense'){document.getElementById('buildToolbar').style.display='none';document.getElementById('abilityBar').style.display='flex';document.getElementById('buildTimer').style.display='none';document.getElementById('crosshair').style.display='block'}if(msg.phase==='build'){document.getElementById('buildToolbar').style.display='flex';document.getElementById('abilityBar').style.display='none';document.getElementById('buildTimer').style.display='block';document.getElementById('crosshair').style.display='none'}});
+        socket.on('playerMove',(msg)=>{if(gs){const p=gs.players.find(p=>p.id===msg.id);if(p){p.x=msg.x;p.y=msg.y;if(msg.direction)p.direction=msg.direction}}});
+        socket.on('explosion',(msg)=>{createExplosion(msg.x,msg.y,msg.radius,msg.color)});
+        socket.on('towerShot',(msg)=>{createShotLine(msg.towerId,msg.targetX,msg.targetY,msg.color)});
+        socket.on('bossSpawn',(msg)=>{const bw=document.getElementById('bossWarning');bw.textContent=`${msg.icon} ${msg.name} ПОЯВИЛСЯ!`;bw.style.display='block';setTimeout(()=>{bw.style.display='none'},4000)});
+        socket.on('fortressHit',(msg)=>{if(gs){gs.fortressHP=msg.hp;gs.fortressMaxHP=msg.maxHp}});
+        socket.on('wallDestroyed',(msg)=>{createExplosion(msg.x,msg.y,30,'#8B4513')});
+        socket.on('trapTriggered',(msg)=>{createExplosion(msg.x,msg.y,20,msg.type==='explosive'?'#FF4500':'#9b59b6')});
+        socket.on('buildTimer',(msg)=>{const el=document.getElementById('buildTimer');el.style.display='block';el.textContent=`🏗️ Стройте! ${msg.timeLeft}с`;el.style.color=msg.timeLeft<=10?'#e74c3c':'#f1c40f'});
+        socket.on('chat',(msg)=>{const d=document.getElementById('chatMessages');d.innerHTML+=`<div class="chat-msg">${msg.text}</div>`;d.scrollTop=d.scrollHeight;if(d.children.length>50)d.removeChild(d.firstChild)});
+        socket.on('swapPosition',(msg)=>{if(gs){const p1=gs.players.find(p=>p.id===msg.p1.id);const p2=gs.players.find(p=>p.id===msg.p2.id);if(p1){p1.x=msg.p1.x;p1.y=msg.p1.y}if(p2){p2.x=msg.p2.x;p2.y=msg.p2.y}}});
+        socket.on('gameEnd',(msg)=>{gameRunning=false;if(moveInterval)clearInterval(moveInterval);const el=document.getElementById('endScreen');el.classList.remove('hidden');document.getElementById('endTitle').textContent=msg.won?'🏆 ПОБЕДА!':'💀 ПОРАЖЕНИЕ';document.getElementById('endTitle').style.color=msg.won?'#2ecc71':'#e74c3c';document.getElementById('endScore').textContent=`Счёт: ${msg.score} | Волна: ${msg.wave} | Убито: ${msg.totalKills}`;if(msg.results&&msg.results.length){let html='<tr><th>#</th><th>Игрок</th><th>Класс</th><th>Убийства</th><th>Урон</th><th>Очки</th><th>Ур.</th></tr>';msg.results.forEach((r,i)=>{html+=`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.role}</td><td>${r.kills}</td><td>${r.damage}</td><td>${r.score}</td><td>${r.level}</td></tr>`});document.getElementById('resultsTable').innerHTML=html}});
+        socket.on('error_msg',(msg)=>{alert(msg);location.reload()});
+        socket.on('connect_error',()=>{alert('Не удалось подключиться!');location.reload()});
     }
 
-    function startGameView() {
+    function startGameView(){
         document.getElementById('lobbyScreen').classList.add('hidden');
-        document.getElementById('charSelectScreen').classList.add('hidden');
         document.getElementById('loginScreen').classList.add('hidden');
-        canvas.style.display = 'block';
-        document.getElementById('hud').style.display = 'flex';
-        document.getElementById('playerList').style.display = 'block';
-        document.getElementById('chatPanel').style.display = 'block';
-        document.getElementById('controlsInfo').style.display = 'block';
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        if (!gameRunning) {
-            gameRunning = true;
-            startMoveLoop();
-            render();
-        }
-
-        if (gs && gs.phase === 'build') {
-            document.getElementById('buildToolbar').style.display = 'flex';
-            document.getElementById('minimap').style.display = 'block';
-            document.getElementById('buildTimer').style.display = 'block';
-        }
-        if (gs && gs.phase === 'defense') {
-            document.getElementById('minimap').style.display = 'block';
-            document.getElementById('abilityBar').style.display = 'flex';
-            document.getElementById('buildTimer').style.display = 'none';
-        }
+        document.getElementById('charSelect').classList.add('hidden');
+        document.getElementById('hud').style.display='flex';
+        document.getElementById('playerList').style.display='block';
+        document.getElementById('chatPanel').style.display='block';
+        document.getElementById('controlsInfo').style.display='block';
+        if(!gameRunning){gameRunning=true;initThree();startMoveLoop();animate()}
+        if(gs&&gs.phase==='build'){document.getElementById('buildToolbar').style.display='flex';document.getElementById('crosshair').style.display='none'}
+        if(gs&&gs.phase==='defense'){document.getElementById('abilityBar').style.display='flex';document.getElementById('crosshair').style.display='block'}
     }
 
-    function startMoveLoop() {
-        if (moveInterval) clearInterval(moveInterval);
-        moveInterval = setInterval(() => {
-            if (!gs || !gs.players.length) return;
-            const me = gs.players.find(p => p.id === myId);
-            if (!me || me.isDead) return;
-            if (gs.phase !== 'defense' && gs.phase !== 'build') return;
-            let dx = 0, dy = 0;
-            if (keys['w'] || keys['ц']) dy = -1;
-            if (keys['s'] || keys['ы']) dy = 1;
-            if (keys['a'] || keys['ф']) dx = -1;
-            if (keys['d'] || keys['в']) dx = 1;
-            if (dx !== 0 || dy !== 0) {
-                const lookingAt = { x: me.x + (mouseX - canvas.width/2), y: me.y + (mouseY - canvas.height/2) };
-                socket.emit('action', { type: 'move', dx, dy, lookingAt });
+    function initThree(){
+        if(renderer)return;
+        const canvas=document.getElementById('gameCanvas');
+        canvas.style.display='block';
+        renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'high-performance'});
+        renderer.setSize(window.innerWidth,window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+        renderer.shadowMap.enabled=true;
+        renderer.shadowMap.type=THREE.BasicShadowMap;
+        scene=new THREE.Scene();
+        scene.background=new THREE.Color(0x87ceeb);
+        scene.fog=new THREE.Fog(0x87ceeb,400,800);
+        camera=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,1,1000);
+        controls=new OrbitControls(camera,canvas);
+        controls.enableDamping=true;
+        controls.dampingFactor=0.1;
+        controls.maxPolarAngle=Math.PI/2.2;
+        controls.minDistance=50;
+        controls.maxDistance=500;
+        controls.target.set(CENTER_X,0,CENTER_Y);
+        camera.position.set(CENTER_X,200,CENTER_Y+300);
+        const ambient=new THREE.AmbientLight(0xffffff,0.6);scene.add(ambient);
+        const dir=new THREE.DirectionalLight(0xffffff,0.8);dir.position.set(200,300,100);dir.castShadow=true;dir.shadow.mapSize.set(1024,1024);dir.shadow.camera.near=1;dir.shadow.camera.far=1000;dir.shadow.camera.left=-400;dir.shadow.camera.right=400;dir.shadow.camera.top=400;dir.shadow.camera.bottom=-400;scene.add(dir);
+        const hemi=new THREE.HemisphereLight(0x87ceeb,0x228B22,0.3);scene.add(hemi);
+        groundMesh=new THREE.Mesh(new THREE.PlaneGeometry(MAP_W,MAP_H),new THREE.MeshLambertMaterial({color:0x2d5a27}));groundMesh.rotation.x=-Math.PI/2;groundMesh.position.set(CENTER_X,0,CENTER_Y);groundMesh.receiveShadow=true;scene.add(groundMesh);
+        const grid=new THREE.GridHelper(MAP_W,30,0x1a3a1a,0x1a3a1a);grid.position.set(CENTER_X,0.5,CENTER_Y);scene.add(grid);
+        fortressGroup=new THREE.Group();
+        const fb=new THREE.Mesh(new THREE.CylinderGeometry(50,50,30,16),new THREE.MeshLambertMaterial({color:0x8B4513}));fb.position.y=15;fb.castShadow=true;fortressGroup.add(fb);
+        const fp=new THREE.Mesh(new THREE.CylinderGeometry(55,55,5,16),new THREE.MeshLambertMaterial({color:0x654321}));fp.position.y=32;fortressGroup.add(fp);
+        const ft=new THREE.Mesh(new THREE.ConeGeometry(15,20,8),new THREE.MeshLambertMaterial({color:0xe94560}));ft.position.y=50;fortressGroup.add(ft);
+        fortressGroup.position.set(CENTER_X,0,CENTER_Y);scene.add(fortressGroup);
+        particleGroup=new THREE.Group();scene.add(particleGroup);
+        envGroup=new THREE.Group();scene.add(envGroup);
+        createEnvironment();
+        window.addEventListener('resize',()=>{if(renderer){camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight)}});
+    }
+
+    function createEnvironment(){
+        for(let i=0;i<30;i++){
+            const x=Math.random()*MAP_W;
+            const z=Math.random()*MAP_H;
+            if(Math.hypot(x-CENTER_X,z-CENTER_Y)>100){
+                const h=15+Math.random()*15;
+                const tree=new THREE.Mesh(new THREE.ConeGeometry(8+Math.random()*6,h,6),new THREE.MeshLambertMaterial({color:0x228B22}));tree.position.set(x,h/2,z);tree.castShadow=true;envGroup.add(tree);
+                const trunk=new THREE.Mesh(new THREE.CylinderGeometry(1,1.5,5,5),new THREE.MeshLambertMaterial({color:0x8B4513}));trunk.position.set(x,2.5,z);envGroup.add(trunk);
             }
-        }, 50);
-    }
-
-    function updateLobby() {
-        if (!gs) return;
-        const div = document.getElementById('lobbyPlayers');
-        div.innerHTML = gs.players.map(p => {
-            const r = ROLES[p.roleKey] || {};
-            return `<div class="lobby-player ${p.ready ? 'ready' : ''}">
-                <span class="role-icon">${r.icon || '👤'}</span>
-                <div><div class="p-name">${p.name}</div><div class="p-role">${r.name || p.role}</div></div>
-                <span style="margin-left:auto">${p.ready ? '✅' : '⏳'}</span>
-            </div>`;
-        }).join('');
-        document.getElementById('lobbyInfo').textContent = `${gs.players.length}/6 игроков | Минимум 1 для старта`;
-    }
-
-    function toggleReady() {
-        const me = gs?.players.find(p => p.id === myId);
-        if (!me) return;
-        socket.emit('action', { type: 'ready', ready: !me.ready });
-        document.getElementById('readyBtn').textContent = me.ready ? 'Готов' : 'Не готов';
-    }
-
-    function updateHUD() {
-        if (!gs) return;
-        const me = gs.players.find(p => p.id === myId);
-        if (!me) return;
-        const r = ROLES[me.roleKey] || {};
-        const hpPct = Math.max(0, me.hp / me.maxHp * 100);
-        const xpPct = me.xpToNext > 0 ? Math.min(100, me.xp / me.xpToNext * 100) : 0;
-        const hpColor = hpPct > 60 ? 'green' : hpPct > 30 ? 'yellow' : 'red';
-        document.getElementById('leftHud').innerHTML = `
-            <div>${r.icon||'👤'} <b>${me.name}</b> | ${r.name||me.role} ур.${me.level}</div>
-            <div class="hp-bar"><div class="hp-fill ${hpColor}" style="width:${hpPct}%"></div></div>
-            <div class="xp-bar"><div class="xp-fill" style="width:${xpPct}%"></div></div>
-            <div>❤️ ${me.hp}/${me.maxHp} | 💰 ${me.coins} | 🔫 ${me.ammo}/${me.maxAmmo}${me.shield > 0 ? ' | 🛡️'+me.shield : ''}</div>
-        `;
-        document.getElementById('rightHud').innerHTML = `
-            <div>⚔️ Волна: ${gs.wave}/${gs.maxWaves}</div>
-            <div>🏰 Крепость: ${gs.fortressHP}/${gs.fortressMaxHP}</div>
-            <div>💀 Мобов: ${gs.mobCount} | Убито: ${gs.waveMobsKilled}/${gs.waveMobsTotal}</div>
-            <div>⭐ Счёт: ${gs.score}${gs.comboMultiplier > 1 ? ' | 🔥x'+gs.comboMultiplier.toFixed(1) : ''}</div>
-            <div>📊 Сложность: ${gs.difficulty.toFixed(1)}</div>
-        `;
-    }
-
-    function updatePlayerList() {
-        if (!gs) return;
-        document.getElementById('playerList').innerHTML = gs.players.map(p => {
-            const r = ROLES[p.roleKey] || {};
-            const hpPct = Math.max(0, p.hp / p.maxHp * 100);
-            return `<div class="plist-item ${p.isDead ? 'dead' : ''}" style="border-left-color:${r.color||'#fff'}">
-                ${r.icon||'👤'} ${p.name} ${p.isDead ? '💀' : ''} ур.${p.level}
-                <div class="hp-bar"><div class="hp-fill green" style="width:${hpPct}%"></div></div>
-            </div>`;
-        }).join('');
-    }
-
-    function updateBuildToolbar() {
-        if (!gs) return;
-        const me = gs.players.find(p => p.id === myId);
-        if (!me) return;
-        const tb = document.getElementById('buildToolbar');
-        let html = '';
-        html += '<span class="build-sep">Стены:</span>';
-        for (const [k, v] of Object.entries(WALL_TYPES)) {
-            const sel = selectedTool === 'wall' && buildSubType === k ? ' active' : '';
-            const disabled = me.coins < v.cost ? ' disabled' : '';
-            html += `<button class="build-btn${sel}" onclick="selectBuildTool('wall','${k}')"${disabled}>${v.icon} ${v.name} (${v.cost}💰)</button>`;
         }
-        html += '<span class="build-sep">Башни:</span>';
-        for (const [k, v] of Object.entries(TOWER_TYPES)) {
-            const sel = selectedTool === 'tower' && buildSubType === k ? ' active' : '';
-            const disabled = me.coins < v.cost ? ' disabled' : '';
-            html += `<button class="build-btn${sel}" onclick="selectBuildTool('tower','${k}')"${disabled}>${v.icon} ${v.name} (${v.cost}💰)</button>`;
+        for(let i=0;i<20;i++){
+            const x=Math.random()*MAP_W;
+            const z=Math.random()*MAP_H;
+            if(Math.hypot(x-CENTER_X,z-CENTER_Y)>80){
+                const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(3+Math.random()*5),new THREE.MeshLambertMaterial({color:0x808080}));rock.position.set(x,2+Math.random()*2,z);rock.rotation.set(Math.random(),Math.random(),Math.random());rock.castShadow=true;envGroup.add(rock);
+            }
         }
-        html += '<span class="build-sep">Ловушки:</span>';
-        for (const [k, v] of Object.entries(TRAP_TYPES)) {
-            const sel = selectedTool === 'trap' && buildSubType === k ? ' active' : '';
-            const disabled = me.coins < v.cost ? ' disabled' : '';
-            html += `<button class="build-btn${sel}" onclick="selectBuildTool('trap','${k}')"${disabled}>${v.icon} ${v.name} (${v.cost}💰)</button>`;
-        }
-        html += '<span class="build-sep">|</span>';
-        html += `<button class="build-btn${selectedTool === 'none' ? ' active' : ''}" onclick="selectBuildTool('none','')">✋ Курсор</button>`;
-        html += `<button class="build-btn" onclick="sendBuyAmmo()" ${me.coins < 10 || gs.phase !== 'defense' ? 'disabled' : ''}>🔫 +10 патрон (10💰)</button>`;
-        html += '<button class="build-btn green-btn" onclick="endBuild()">⚔️ Начать бой</button>';
-        tb.innerHTML = html;
     }
 
-    function updateAbilityBar() {
-        if (!gs) return;
-        const me = gs.players.find(p => p.id === myId);
-        if (!me) return;
-        const bar = document.getElementById('abilityBar');
-        const abilities = ROLES[me.roleKey]?.abilities || [];
-        let html = '';
-        abilities.forEach((ab, i) => {
-            const info = ABILITY_INFO[ab] || { icon: '?', name: ab };
-            const cdLeft = Math.max(0, (me.abilityCooldowns?.[ab] || 0) - Date.now());
-            const onCd = cdLeft > 0;
-            html += `<div class="ability-btn ${onCd ? 'on-cooldown' : ''}" onclick="useAbility('${ab}')">
-                <span class="a-key">${i+1}</span>
-                <span class="a-icon">${info.icon}</span>
-                <span style="font-size:8px">${info.name}</span>
-                ${onCd ? `<span class="a-cd">${(cdLeft/1000).toFixed(0)}с</span>` : ''}
-            </div>`;
+    function createExplosion(x,z,radius,color){
+        const c=new THREE.Color(color);
+        for(let i=0;i<15;i++){
+            const geo=new THREE.SphereGeometry(0.5+Math.random()*1.5,4,4);
+            const mat=new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:1});
+            const mesh=new THREE.Mesh(geo,mat);
+            mesh.position.set(x,5+Math.random()*10,z);
+            const angle=Math.random()*Math.PI*2;
+            const speed=1+Math.random()*3;
+            mesh.userData={vx:Math.cos(angle)*speed,vy:2+Math.random()*3,vz:Math.sin(angle)*speed,life:30+Math.random()*20,maxLife:50};
+            particleGroup.add(mesh);
+        }
+    }
+
+    function createShotLine(towerId,tx,tz,color){
+        const tower=gs?.towers?.find(t=>t.id===towerId);
+        if(!tower)return;
+        const points=[new THREE.Vector3(tower.x,15,tower.z||tower.y),new THREE.Vector3(tx,5,tz)];
+        const geo=new THREE.BufferGeometry().setFromPoints(points);
+        const mat=new THREE.LineBasicMaterial({color:new THREE.Color(color),transparent:true,opacity:1,linewidth:2});
+        const line=new THREE.Line(geo,mat);
+        line.userData={life:8};
+        scene.add(line);
+    }
+
+    function animate(){
+        if(!gameRunning)return;
+        requestAnimationFrame(animate);
+        const delta=clock.getDelta();
+        controls.update();
+        updateScene();
+        updateParticles();
+        renderer.render(scene,camera);
+    }
+
+    function updateScene(){
+        if(!gs)return;
+        for(const p of gs.players||[]){
+            let mesh=playerMeshes[p.id];
+            if(!mesh){
+                mesh=new THREE.Group();
+                const body=new THREE.Mesh(new THREE.CapsuleGeometry(5,10,4,8),new THREE.MeshLambertMaterial({color:new THREE.Color(ROLES[p.roleKey]?.color||'#fff')}));
+                body.position.y=10;body.castShadow=true;mesh.add(body);
+                const head=new THREE.Mesh(new THREE.SphereGeometry(4,8,8),new THREE.MeshLambertMaterial({color:0xffdbac}));
+                head.position.y=22;head.castShadow=true;mesh.add(head);
+                const nameCanvas=document.createElement('canvas');nameCanvas.width=128;nameCanvas.height=32;
+                const nctx=nameCanvas.getContext('2d');nctx.fillStyle='rgba(0,0,0,0.5)';nctx.fillRect(0,0,128,32);nctx.fillStyle='#fff';nctx.font='14px Arial';nctx.textAlign='center';nctx.fillText(p.name,64,22);
+                const nameTex=new THREE.CanvasTexture(nameCanvas);
+                const nameSprite=new THREE.Sprite(new THREE.SpriteMaterial({map:nameTex,transparent:true}));
+                nameSprite.position.y=32;nameSprite.scale.set(30,7.5,1);mesh.add(nameSprite);
+                if(p.id===myId){
+                    const ring=new THREE.Mesh(new THREE.RingGeometry(7,9,16),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:0.5}));
+                    ring.rotation.x=-Math.PI/2;ring.position.y=0.5;mesh.add(ring);
+                }
+                scene.add(mesh);
+                playerMeshes[p.id]=mesh;
+            }
+            mesh.position.set(p.x,0,p.z||p.y);
+            if(p.isDead)mesh.visible=false;else mesh.visible=true;
+            if(p.direction){const angle=Math.atan2(p.direction.x||0,p.direction.y||0);mesh.rotation.y=angle}
+        }
+        for(const mob of gs.mobs||[]){
+            let mesh=mobMeshes[mob.id];
+            if(!mesh){
+                mesh=new THREE.Group();
+                const s=mob.size/2||5;
+                const body=new THREE.Mesh(new THREE.SphereGeometry(s,8,8),new THREE.MeshLambertMaterial({color:new THREE.Color(mob.color||'#8B4513')}));
+                body.position.y=s+2;body.castShadow=true;mesh.add(body);
+                if(mob.isBoss){
+                    const crown=new THREE.Mesh(new THREE.ConeGeometry(s*0.5,s,4),new THREE.MeshLambertMaterial({color:0xffd700}));
+                    crown.position.y=s*2+4;mesh.add(crown);
+                }
+                const hpBar=new THREE.Mesh(new THREE.PlaneGeometry(s*2,1.5),new THREE.MeshBasicMaterial({color:0xff0000,side:THREE.DoubleSide}));
+                hpBar.position.y=s*2+8;hpBar.rotation.x=0;mesh.add(hpBar);
+                scene.add(mesh);
+                mobMeshes[mob.id]=mesh;
+            }
+            mesh.position.set(mob.x,0,mob.z||mob.y);
+            const hpPct=Math.max(0,mob.hp/mob.maxHp);
+            const hpBar=mesh.children.find(c=>c.geometry?.type==='PlaneGeometry');
+            if(hpBar){hpBar.scale.x=hpPct;hpBar.position.x=-(1-hpPct)*s/2}
+        }
+        for(const w of gs.walls||[]){
+            let mesh=wallMeshes[w.id];
+            if(!mesh){
+                const s=w.size/2||15;
+                mesh=new THREE.Mesh(new THREE.BoxGeometry(s*2,s*2,s*2),new THREE.MeshLambertMaterial({color:new THREE.Color(w.color||'#8B4513')}));
+                mesh.position.set(w.x,s,w.z||w.y);mesh.castShadow=true;mesh.receiveShadow=true;
+                scene.add(mesh);
+                wallMeshes[w.id]=mesh;
+            }
+            const hpPct=w.hp/w.maxHp;
+            mesh.material.color.set(new THREE.Color(w.color||'#8B4513'));
+            mesh.material.opacity=0.3+hpPct*0.7;
+        }
+        for(const t of gs.towers||[]){
+            let mesh=towerMeshes[t.id];
+            if(!mesh){
+                mesh=new THREE.Group();
+                const base=new THREE.Mesh(new THREE.CylinderGeometry(t.size/2,t.size/2+2,12,8),new THREE.MeshLambertMaterial({color:new THREE.Color(t.color||'#555')}));
+                base.position.y=6;base.castShadow=true;mesh.add(base);
+                const top=new THREE.Mesh(new THREE.SphereGeometry(4,8,8),new THREE.MeshBasicMaterial({color:new THREE.Color(t.color||'#e94560')}));
+                top.position.y=16;mesh.add(top);
+                mesh.position.set(t.x,0,t.z||t.y);
+                scene.add(mesh);
+                towerMeshes[t.id]=mesh;
+            }
+        }
+        for(const p of projectileMeshes){
+            scene.remove(p);
+        }
+        projectileMeshes=[];
+        for(const p of gs.projectiles||[]){
+            const geo=new THREE.SphereGeometry(p.size/2||2,4,4);
+            const mat=new THREE.MeshBasicMaterial({color:new THREE.Color(p.color||'#fff')});
+            const mesh=new THREE.Mesh(geo,mat);
+            mesh.position.set(p.x,5,p.z||p.y);
+            scene.add(mesh);
+            projectileMeshes.push(mesh);
+        }
+    }
+
+    function updateParticles(){
+        for(let i=particleGroup.children.length-1;i>=0;i--){
+            const p=particleGroup.children[i];
+            if(p.userData.life!==undefined){
+                p.position.x+=p.userData.vx||0;
+                p.position.y+=p.userData.vy||0;
+                p.position.z+=p.userData.vz||0;
+                p.userData.vy=(p.userData.vy||0)-0.1;
+                p.userData.life--;
+                if(p.material)p.material.opacity=Math.max(0,p.userData.life/p.userData.maxLife);
+                if(p.userData.life<=0){particleGroup.remove(p);p.geometry?.dispose();p.material?.dispose()}
+            }
+        }
+        for(let i=scene.children.length-1;i>=0;i--){
+            const c=scene.children[i];
+            if(c.isLine&&c.userData.life!==undefined){
+                c.userData.life--;
+                if(c.material)c.material.opacity=c.userData.life/8;
+                if(c.userData.life<=0){scene.remove(c);c.geometry?.dispose();c.material?.dispose()}
+            }
+        }
+    }
+
+    function startMoveLoop(){
+        if(moveInterval)clearInterval(moveInterval);
+        moveInterval=setInterval(()=>{
+            if(!gs||!gs.players.length)return;
+            const me=gs.players.find(p=>p.id===myId);
+            if(!me||me.isDead)return;
+            if(gs.phase!=='defense'&&gs.phase!=='build')return;
+            let dx=0,dy=0;
+            if(keys['w']||keys['ц'])dy=-1;if(keys['s']||keys['ы'])dy=1;
+            if(keys['a']||keys['ф'])dx=-1;if(keys['d']||keys['в'])dx=1;
+            if(dx||dy){
+                const camDir=new THREE.Vector3();camera.getWorldDirection(camDir);
+                const forward=new THREE.Vector3(-camDir.x,0,-camDir.z).normalize();
+                const right=new THREE.Vector3(forward.z,0,-forward.x);
+                const moveDir=new THREE.Vector3().addScaledVector(forward,-dy).addScaledVector(right,dx).normalize();
+                const lookingAt={x:me.x+moveDir.x*50,y:(me.z||me.y)+moveDir.z*50};
+                socket.emit('action',{type:'move',dx:moveDir.x,dy:moveDir.z,lookingAt});
+            }
+        },50);
+    }
+
+    function updateLobby(){
+        if(!gs)return;
+        document.getElementById('lobbyPlayers').innerHTML=gs.players.map(p=>{const r=ROLES[p.roleKey]||{};return`<div class="lobby-player ${p.ready?'ready':''}"><span style="font-size:24px">${r.icon||'👤'}</span><div><div style="font-weight:bold">${p.name}</div><div style="font-size:12px;color:#aaa">${r.name||p.role}</div></div><span style="margin-left:auto">${p.ready?'✅':'⏳'}</span></div>`}).join('');
+        document.getElementById('lobbyInfo').textContent=`${gs.players.length}/6 игроков`;
+    }
+
+    window.toggleReady=function(){
+        const me=gs?.players.find(p=>p.id===myId);
+        if(!me)return;
+        socket.emit('action',{type:'ready',ready:!me.ready});
+        document.getElementById('readyBtn').textContent=me.ready?'Готов':'Не готов';
+    };
+
+    function updateHUD(){
+        if(!gs)return;
+        const me=gs.players.find(p=>p.id===myId);
+        if(!me)return;
+        const r=ROLES[me.roleKey]||{};
+        const hpPct=Math.max(0,me.hp/me.maxHp*100);
+        document.getElementById('leftHud').innerHTML=`<div>${r.icon||'👤'} <b>${me.name}</b> | ${r.name||me.role} ур.${me.level}</div><div class="hp-bar"><div class="hp-fill" style="width:${hpPct}%;background:${hpPct>60?'#2ecc71':hpPct>30?'#f1c40f':'#e74c3c'}"></div></div><div>❤️${me.hp}/${me.maxHp} 💰${me.coins} 🔫${me.ammo}/${me.maxAmmo}${me.shield>0?' 🛡️'+me.shield:''}</div>`;
+        document.getElementById('rightHud').innerHTML=`<div>⚔️ Волна: ${gs.wave}/${gs.maxWaves}</div><div>🏰 Крепость: ${gs.fortressHP}/${gs.fortressMaxHP}</div><div>💀 Мобов: ${gs.mobCount} | Убито: ${gs.waveMobsKilled}/${gs.waveMobsTotal}</div><div>⭐ Счёт: ${gs.score}${gs.comboMultiplier>1?' | 🔥x'+gs.comboMultiplier.toFixed(1):''}</div>`;
+    }
+
+    function updatePlayerList(){
+        if(!gs)return;
+        document.getElementById('playerList').innerHTML=gs.players.map(p=>{const r=ROLES[p.roleKey]||{};return`<div class="plist-item" style="border-left-color:${r.color||'#fff'};${p.isDead?'opacity:.4':''}">${r.icon||'👤'} ${p.name} ${p.isDead?'💀':''} ур.${p.level} <div class="hp-bar"><div class="hp-fill" style="width:${Math.max(0,p.hp/p.maxHp*100)}%;background:#2ecc71"></div></div></div>`}).join('');
+    }
+
+    function updateBuildToolbar(){
+        if(!gs)return;
+        const me=gs.players.find(p=>p.id===myId);
+        if(!me)return;
+        let html='<span style="color:#aaa;font-size:11px">Стены:</span>';
+        for(const[k,v]of Object.entries(WALL_TYPES)){html+=`<button class="build-btn${selectedTool==='wall'&&buildSubType===k?' active':''}" onclick="window.selectBuildTool('wall','${k}')" ${me.coins<v.cost?'disabled':''}>${v.icon} ${v.name}(${v.cost}💰)</button>`}
+        html+='<span style="color:#aaa;font-size:11px">Башни:</span>';
+        for(const[k,v]of Object.entries(TOWER_TYPES)){html+=`<button class="build-btn${selectedTool==='tower'&&buildSubType===k?' active':''}" onclick="window.selectBuildTool('tower','${k}')" ${me.coins<v.cost?'disabled':''}>${v.icon} ${v.name}(${v.cost}💰)</button>`}
+        html+='<span style="color:#aaa;font-size:11px">Ловушки:</span>';
+        for(const[k,v]of Object.entries(TRAP_TYPES)){html+=`<button class="build-btn${selectedTool==='trap'&&buildSubType===k?' active':''}" onclick="window.selectBuildTool('trap','${k}')" ${me.coins<v.cost?'disabled':''}>${v.icon} ${v.name}(${v.cost}💰)</button>`}
+        html+='<span style="color:#aaa">|</span>';
+        html+=`<button class="build-btn${selectedTool==='none'?' active':''}" onclick="window.selectBuildTool('none','')">✋ Курсор</button>`;
+        html+='<button class="build-btn green" onclick="window.endBuild()">⚔️ Начать бой</button>';
+        document.getElementById('buildToolbar').innerHTML=html;
+    }
+
+    function updateAbilityBar(){
+        if(!gs)return;
+        const me=gs.players.find(p=>p.id===myId);
+        if(!me)return;
+        const abilities=ROLES[me.roleKey]?.abilities||[];
+        let html='';
+        abilities.forEach((ab,i)=>{
+            const info=ABILITY_INFO[ab]||{icon:'?',name:ab};
+            const cdLeft=Math.max(0,(me.abilityCooldowns?.[ab]||0));
+            const onCd=cdLeft>0;
+            html+=`<div class="ability-btn${onCd?' on-cd':''}" onclick="window.useAbility('${ab}')"><span class="a-key">${i+1}</span><span class="a-icon">${info.icon}</span><span style="font-size:8px">${info.name}</span>${onCd?`<span class="a-cd">${(cdLeft/1000).toFixed(0)}с</span>`:''}</div>`;
         });
-        bar.innerHTML = html;
+        document.getElementById('abilityBar').innerHTML=html;
     }
 
-    function selectBuildTool(tool, subType) {
-        selectedTool = tool;
-        buildSubType = subType;
-        updateBuildToolbar();
+    window.selectBuildTool=function(tool,sub){selectedTool=tool;buildSubType=sub;updateBuildToolbar()};
+    window.endBuild=function(){socket.emit('action',{type:'endBuild'})};
+    window.useAbility=function(name){const me=gs?.players.find(p=>p.id===myId);if(!me)return;const raycaster=new THREE.Raycaster();const mouse=new THREE.Vector2((mouseX/window.innerWidth)*2-1,-(mouseY/window.innerHeight)*2+1);raycaster.setFromMouse(mouse,camera);const intersects=raycaster.intersectObject(groundMesh);const target=intersects[0]?.point||new THREE.Vector3(CENTER_X,0,CENTER_Y);socket.emit('action',{type:'useAbility',ability:name,targetX:target.x,targetY:target.z})};
+
+    function showMessage(text){
+        const el=document.getElementById('message');el.textContent=text;el.style.display='block';el.style.animation='none';void el.offsetWidth;el.style.animation='fadeInOut 2.5s';setTimeout(()=>{el.style.display='none'},2500);
     }
 
-    function endBuild() { socket.emit('action', { type: 'endBuild' }); }
-
-    function sendBuyAmmo() { socket.emit('action', { type: 'buyAmmo' }); }
-
-    function useAbility(name) {
-        socket.emit('action', { type: 'useAbility', ability: name, targetX: mouseX + camera.x, targetY: mouseY + camera.y });
+    function renderMinimap(){
+        const mc=document.getElementById('minimap');if(mc.style.display==='none')return;
+        const mctx=mc.getContext('2d');
+        mctx.fillStyle='#1a3a1a';mctx.fillRect(0,0,150,112);
+        const sx=150/MAP_W,sy=112/MAP_H;
+        mctx.fillStyle='#8B4513';mctx.fillRect(CENTER_X*sx-3,CENTER_Y*sy-3,6,6);
+        for(const w of gs?.walls||[]){mctx.fillStyle='#aa8844';mctx.fillRect(w.x*sx-1,(w.z||w.y)*sy-1,2,2)}
+        for(const t of gs?.towers||[]){mctx.fillStyle=t.color||'#e94560';mctx.fillRect(t.x*sx-2,(t.z||t.y)*sy-2,4,4)}
+        for(const p of gs?.players||[]){mctx.fillStyle=ROLES[p.roleKey]?.color||'#fff';mctx.beginPath();mctx.arc(p.x*sx,(p.z||p.y)*sy,3,0,Math.PI*2);mctx.fill()}
+        for(const m of gs?.mobs||[]){mctx.fillStyle=m.isBoss?'#ff0000':'#ff6666';mctx.fillRect(m.x*sx-1,(m.z||m.y)*sy-1,m.isBoss?4:2,m.isBoss?4:2)}
     }
 
-    function showMessage(text) {
-        const el = document.getElementById('message');
-        el.textContent = text;
-        el.style.display = 'block';
-        el.style.animation = 'none';
-        void el.offsetWidth;
-        el.style.animation = 'fadeInOut 2.5s';
-        setTimeout(() => { el.style.display = 'none'; }, 2500);
-    }
-
-    function render() {
-        if (!gameRunning) return;
-        requestAnimationFrame(render);
-        if (!gs || !gs.players.length) return;
-
-        const me = gs.players.find(p => p.id === myId);
-        if (me) {
-            camera.x = me.x - canvas.width / 2;
-            camera.y = me.y - canvas.height / 2;
+    document.addEventListener('keydown',(e)=>{
+        keys[e.key.toLowerCase()]=true;
+        if(e.key==='t'||e.key==='T'||e.key==='е'||e.key==='Е'){const ci=document.getElementById('chatInput');if(document.activeElement!==ci){e.preventDefault();ci.focus()}}
+        if(gs?.phase==='defense'){const me=gs.players.find(p=>p.id===myId);if(me&&!me.isDead){const abs=ROLES[me.roleKey]?.abilities||[];const n=parseInt(e.key);if(n>=1&&n<=abs.length)window.useAbility(abs[n-1])}}
+        if(e.key==='Escape'){document.getElementById('chatInput').blur();selectedTool='none';updateBuildToolbar()}
+    });
+    document.addEventListener('keyup',(e)=>{keys[e.key.toLowerCase()]=false});
+    document.getElementById('gameCanvas').addEventListener('click',(e)=>{
+        if(!gs)return;
+        const rect=e.target.getBoundingClientRect();
+        mouseX=e.clientX-rect.left;mouseY=e.clientY-rect.top;
+        const raycaster=new THREE.Raycaster();
+        const mouse=new THREE.Vector2((mouseX/window.innerWidth)*2-1,-(mouseY/window.innerHeight)*2+1);
+        raycaster.setFromMouse(mouse,camera);
+        const intersects=raycaster.intersectObject(groundMesh);
+        if(!intersects.length)return;
+        const wp=intersects[0].point;
+        if(gs.phase==='build'){
+            if(selectedTool==='wall')socket.emit('action',{type:'placeWall',x:wp.x,y:wp.z,wallType:buildSubType});
+            else if(selectedTool==='tower')socket.emit('action',{type:'placeTower',x:wp.x,y:wp.z,towerType:buildSubType});
+            else if(selectedTool==='trap')socket.emit('action',{type:'placeTrap',x:wp.x,y:wp.z,trapType:buildSubType});
         }
-
-        ctx.fillStyle = '#2d5a27';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.save();
-        ctx.translate(-camera.x, -camera.y);
-
-        for (let x = 0; x < MAP_W; x += 40) {
-            for (let y = 0; y < MAP_H; y += 40) {
-                ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-                ctx.strokeRect(x, y, 40, 40);
-            }
-        }
-
-        ctx.fillStyle = 'rgba(139,69,19,0.3)';
-        ctx.strokeStyle = '#8B4513';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(MAP_W/2, MAP_H/2, 50, 0, Math.PI*2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.font = '20px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🏰', MAP_W/2, MAP_H/2);
-
-        if (gs.fortressHP < gs.fortressMaxHP) {
-            const hpPct = gs.fortressHP / gs.fortressMaxHP;
-            ctx.fillStyle = '#333';
-            ctx.fillRect(MAP_W/2 - 30, MAP_H/2 + 35, 60, 6);
-            ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : hpPct > 0.25 ? '#f1c40f' : '#e74c3c';
-            ctx.fillRect(MAP_W/2 - 30, MAP_H/2 + 35, 60 * hpPct, 6);
-        }
-
-        for (const wall of gs.walls || []) {
-            const hpPct = wall.hp / wall.maxHp;
-            ctx.fillStyle = `rgba(139,69,19,${0.3 + hpPct * 0.7})`;
-            ctx.fillRect(wall.x - 15, wall.y - 15, 30, 30);
-            ctx.strokeStyle = '#555';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(wall.x - 15, wall.y - 15, 30, 30);
-            if (hpPct < 1) {
-                ctx.fillStyle = '#333';
-                ctx.fillRect(wall.x - 12, wall.y + 16, 24, 3);
-                ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : '#e74c3c';
-                ctx.fillRect(wall.x - 12, wall.y + 16, 24 * hpPct, 3);
-            }
-        }
-
-        for (const tower of gs.towers || []) {
-            ctx.fillStyle = tower.color || '#555';
-            ctx.beginPath();
-            ctx.arc(tower.x, tower.y, tower.size / 2 || 12, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            ctx.fillStyle = '#fff';
-            ctx.font = '16px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(tower.icon || '🗼', tower.x, tower.y);
-            if (tower.level > 1) {
-                ctx.fillStyle = '#f1c40f';
-                ctx.font = '9px Arial';
-                ctx.fillText('⭐'.repeat(Math.min(tower.level-1, 5)), tower.x, tower.y + 16);
-            }
-        }
-
-        for (const trap of gs.traps || []) {
-            if (gs.phase === 'defense') {
-                const me2 = gs.players.find(p => p.id === myId);
-                if (me2 && me2.roleKey === 'SCOUT') {
-                    ctx.globalAlpha = 0.5;
-                    ctx.fillStyle = trap.color || '#808080';
-                    ctx.beginPath();
-                    ctx.arc(trap.x, trap.y, 10, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(trap.icon || '📍', trap.x, trap.y);
-                    ctx.globalAlpha = 1;
-                }
-            } else if (gs.phase === 'build') {
-                ctx.globalAlpha = 0.4;
-                ctx.fillStyle = trap.color || '#808080';
-                ctx.beginPath();
-                ctx.arc(trap.x, trap.y, 8, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1;
-            }
-        }
-
-        for (const mob of gs.mobs || []) {
-            const hpPct = mob.hp / mob.maxHp;
-            const r = mob.size / 2 || 10;
-            ctx.fillStyle = mob.color || '#8B4513';
-            ctx.beginPath();
-            ctx.arc(mob.x, mob.y, r, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = mob.isBoss ? '#e74c3c' : '#000';
-            ctx.lineWidth = mob.isBoss ? 2 : 1;
-            ctx.stroke();
-            ctx.fillStyle = '#fff';
-            ctx.font = `${Math.max(12, r)}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(MOB_ICONS[mob.name] || '👺', mob.x, mob.y);
-            ctx.fillStyle = '#333';
-            ctx.fillRect(mob.x - r, mob.y - r - 6, r * 2, 4);
-            ctx.fillStyle = hpPct > 0.5 ? '#2ecc71' : '#e74c3c';
-            ctx.fillRect(mob.x - r, mob.y - r - 6, r * 2 * hpPct, 4);
-            if (mob.isBoss) {
-                ctx.fillStyle = '#e74c3c';
-                ctx.font = '10px Arial';
-                ctx.fillText(mob.name, mob.x, mob.y - r - 12);
-            }
-            if (mob.statusEffects && mob.statusEffects.length) {
-                let sx = mob.x - 10;
-                for (const e of mob.statusEffects) {
-                    if (e === 'slow') { ctx.fillStyle = '#00CED1'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
-                    else if (e === 'stun') { ctx.fillStyle = '#f1c40f'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
-                    else if (e === 'poison') { ctx.fillStyle = '#00FF00'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
-                    else if (e === 'burn') { ctx.fillStyle = '#FF4500'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
-                    else if (e === 'marked') { ctx.fillStyle = '#ff00ff'; ctx.fillRect(sx, mob.y + r + 4, 4, 4); sx += 5; }
-                }
-            }
-        }
-
-        for (const p of gs.players || []) {
-            const r = ROLES[p.roleKey] || {};
-            if (p.isDead) {
-                ctx.globalAlpha = 0.3;
-            }
-            ctx.fillStyle = r.color || '#fff';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 15, 0, Math.PI * 2);
-            ctx.fill();
-            if (p.shield > 0) {
-                ctx.strokeStyle = '#3498db';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 18, 0, Math.PI * 2);
-                ctx.stroke();
-            }
-            if (p.id === myId) {
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([4, 4]);
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.setLineDash([]);
-                ctx.lineWidth = 1;
-            }
-            ctx.fillStyle = '#fff';
-            ctx.font = '16px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(r.icon || '👤', p.x, p.y);
-            ctx.font = '10px Arial';
-            ctx.fillText(p.name, p.x, p.y - 22);
-            ctx.fillStyle = '#333';
-            ctx.fillRect(p.x - 15, p.y + 18, 30, 4);
-            ctx.fillStyle = (p.hp / p.maxHp) > 0.5 ? '#2ecc71' : '#e74c3c';
-            ctx.fillRect(p.x - 15, p.y + 18, 30 * Math.max(0, p.hp / p.maxHp), 4);
-            ctx.globalAlpha = 1;
-        }
-
-        for (const s of shotAnims) {
-            ctx.strokeStyle = s.color;
-            ctx.globalAlpha = s.life / 8;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            let sx = s.x1, sy = s.y1;
-            const tower = gs.towers?.find(t => t.id === s.towerId);
-            if (tower) { sx = tower.x; sy = tower.y; }
-            ctx.moveTo(sx, sy);
-            ctx.lineTo(s.x2, s.y2);
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-            ctx.lineWidth = 1;
-        }
-
-        for (const part of particles) {
-            ctx.globalAlpha = Math.max(0, part.life / part.maxLife);
-            ctx.fillStyle = part.color;
-            ctx.beginPath();
-            ctx.arc(part.x, part.y, part.size * (part.life / part.maxLife), 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-
-        ctx.restore();
-
-        for (let i = particles.length - 1; i >= 0; i--) {
-            particles[i].x += particles[i].vx;
-            particles[i].y += particles[i].vy;
-            particles[i].vx *= 0.95;
-            particles[i].vy *= 0.95;
-            particles[i].life--;
-            if (particles[i].life <= 0) particles.splice(i, 1);
-        }
-        for (let i = shotAnims.length - 1; i >= 0; i--) {
-            shotAnims[i].life--;
-            if (shotAnims[i].life <= 0) shotAnims.splice(i, 1);
-        }
-
-        renderMinimap();
-    }
-
-    function renderMinimap() {
-        mmCtx.fillStyle = '#1a3a1a';
-        mmCtx.fillRect(0, 0, 150, 112);
-        const sx = 150 / MAP_W, sy = 112 / MAP_H;
-
-        mmCtx.fillStyle = '#8B4513';
-        mmCtx.fillRect(MAP_W/2*sx-3, MAP_H/2*sy-3, 6, 6);
-
-        for (const wall of gs.walls || []) {
-            mmCtx.fillStyle = '#aa8844';
-            mmCtx.fillRect(wall.x*sx-1, wall.y*sy-1, 2, 2);
-        }
-        for (const tower of gs.towers || []) {
-            mmCtx.fillStyle = tower.color || '#e94560';
-            mmCtx.fillRect(tower.x*sx-2, tower.y*sy-2, 4, 4);
-        }
-        for (const p of gs.players || []) {
-            const r = ROLES[p.roleKey] || {};
-            mmCtx.fillStyle = p.isDead ? '#666' : (r.color || '#fff');
-            mmCtx.beginPath();
-            mmCtx.arc(p.x*sx, p.y*sy, 3, 0, Math.PI*2);
-            mmCtx.fill();
-        }
-        for (const mob of gs.mobs || []) {
-            mmCtx.fillStyle = mob.isBoss ? '#ff0000' : '#ff6666';
-            mmCtx.fillRect(mob.x*sx-1, mob.y*sy-1, mob.isBoss ? 4 : 2, mob.isBoss ? 4 : 2);
-        }
-    }
-
-    document.addEventListener('keydown', (e) => {
-        keys[e.key.toLowerCase()] = true;
-        if (e.key === 't' || e.key === 'T' || e.key === 'е' || e.key === 'Е') {
-            const ci = document.getElementById('chatInput');
-            if (document.activeElement !== ci) {
-                e.preventDefault();
-                ci.focus();
-            }
-        }
-        if (gs && gs.phase === 'defense') {
-            const me = gs.players.find(p => p.id === myId);
-            if (me && !me.isDead) {
-                const abilities = ROLES[me.roleKey]?.abilities || [];
-                const num = parseInt(e.key);
-                if (num >= 1 && num <= abilities.length) {
-                    useAbility(abilities[num - 1]);
-                }
-            }
-        }
-        if (e.key === 'Escape') {
-            document.getElementById('chatInput').blur();
-            selectedTool = 'none';
-            updateBuildToolbar();
+        if(gs.phase==='defense'){
+            const me=gs.players.find(p=>p.id===myId);
+            if(me&&!me.isDead)socket.emit('action',{type:'shoot',targetX:wp.x,targetY:wp.z});
         }
     });
+    document.getElementById('gameCanvas').addEventListener('mousemove',(e)=>{mouseX=e.clientX;mouseY=e.clientY});
+    document.getElementById('gameCanvas').addEventListener('wheel',(e)=>{cameraDistance=clamp(cameraDistance+e.deltaY*0.5,100,500);controls.minDistance=cameraDistance;controls.maxDistance=cameraDistance});
 
-    document.addEventListener('keyup', (e) => {
-        keys[e.key.toLowerCase()] = false;
-    });
+    function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 
-    canvas.addEventListener('click', (e) => {
-        if (!gs) return;
-        const rect = canvas.getBoundingClientRect();
-        const cx = e.clientX - rect.left;
-        const cy = e.clientY - rect.top;
-        const worldX = cx + camera.x;
-        const worldY = cy + camera.y;
-
-        if (gs.phase === 'build') {
-            if (selectedTool === 'wall') {
-                socket.emit('action', { type: 'placeWall', x: worldX, y: worldY, wallType: buildSubType });
-            } else if (selectedTool === 'tower') {
-                socket.emit('action', { type: 'placeTower', x: worldX, y: worldY, towerType: buildSubType });
-            } else if (selectedTool === 'trap') {
-                socket.emit('action', { type: 'placeTrap', x: worldX, y: worldY, trapType: buildSubType });
-            }
-        }
-
-        if (gs.phase === 'defense') {
-            const me = gs.players.find(p => p.id === myId);
-            if (me && !me.isDead) {
-                socket.emit('action', { type: 'shoot', targetX: worldX, targetY: worldY });
-            }
-        }
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        mouseX = e.clientX - rect.left;
-        mouseY = e.clientY - rect.top;
-    });
-
-    window.addEventListener('resize', () => {
-        if (canvas.style.display === 'block') {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-    });
+    setInterval(()=>{updateHUD();updatePlayerList();updateAbilityBar();renderMinimap()},500);
     </script>
 </body>
 </html>
